@@ -391,17 +391,17 @@ async def process_sports_reminder_toggle(callback: CallbackQuery):
     day_map = {"MON": "Monday", "TUE": "Tuesday", "WED": "Wednesday", "THU": "Thursday", "FRI": "Friday", "SAT": "Saturday", "SUN": "Sunday"}
 
     if rtype == "gym":
-        get_entry = sync_to_async(lambda: GymEvent.objects.get(id=event_id))
+        get_entry = sync_to_async(lambda: GymEvent.objects.select_related('event_id').get(id=event_id))
         entry = await get_entry()
         subject_name = "Gym Session"
-        time_str = entry.start_time.strftime("%H:%M")
+        time_str = entry.event_id.start_time.strftime("%H:%M") if entry.event_id and entry.event_id.start_time else "00:00"
+        day = day_map.get(entry.event_id.day, entry.event_id.day) if entry.event_id else "Monday"
     else:
         get_entry = sync_to_async(lambda: Event.objects.get(id=event_id))
         entry = await get_entry()
         subject_name = entry.status.replace("_", " ").title() if entry.status else "Sport"
-        time_str = entry.start_time.strftime("%H:%M")
-
-    day = day_map.get(entry.day, entry.day)
+        time_str = entry.start_time.strftime("%H:%M") if entry.start_time else "00:00"
+        day = day_map.get(entry.day, entry.day)
 
     if action == "off":
         await delete_reminder(callback.from_user.id, rtype, subject_name, day, time_str)
@@ -424,17 +424,18 @@ async def save_sports_reminder(callback: CallbackQuery):
     day_map = {"MON": "Monday", "TUE": "Tuesday", "WED": "Wednesday", "THU": "Thursday", "FRI": "Friday", "SAT": "Saturday", "SUN": "Sunday"}
 
     if rtype == "gym":
-        get_entry = sync_to_async(lambda: GymEvent.objects.get(id=event_id))
+        get_entry = sync_to_async(lambda: GymEvent.objects.select_related('event_id').get(id=event_id))
         entry = await get_entry()
         subject_name = "Gym Session"
-        time_str = entry.start_time.strftime("%H:%M")
+        time_str = entry.event_id.start_time.strftime("%H:%M") if entry.event_id and entry.event_id.start_time else "00:00"
+        day = day_map.get(entry.event_id.day, entry.event_id.day) if entry.event_id else "Monday"
     else:
         get_entry = sync_to_async(lambda: Event.objects.get(id=event_id))
         entry = await get_entry()
         subject_name = entry.status.replace("_", " ").title() if entry.status else "Sport"
-        time_str = entry.start_time.strftime("%H:%M")
-
-    day = day_map.get(entry.day, entry.day)
+        time_str = entry.start_time.strftime("%H:%M") if entry.start_time else "00:00"
+        day = day_map.get(entry.day, entry.day)
 
     await add_reminder(callback.from_user.id, rtype, subject_name, day, time_str, offset)
     await callback.message.edit_text(f"Reminder set for {subject_name} {offset} minutes before.")
+

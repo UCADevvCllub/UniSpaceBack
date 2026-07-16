@@ -49,16 +49,16 @@ class Command(BaseCommand):
         
         lesson_count = 0
         for level, day_name, time_str, subject in lessons:
-            cohort, _ = Cohort.objects.get_or_create(
-                study_year=study_year,
+            cohort_id, _ = Cohort.objects.get_or_create(
+                study_year_id=study_year,
                 cohort_name=level
             )
             
             # Map subject
-            subj, _ = Subject.objects.get_or_create(name=subject.title()[:50])
+            subj_id, _ = Subject.objects.get_or_create(name=subject.title()[:50])
             
             # Get or create placeholder instructor
-            instructor, _ = Instructor.objects.get_or_create(
+            instructor_id, _ = Instructor.objects.get_or_create(
                 first_name="TBD", last_name="TBD",
                 defaults={"status": "ON_CAMPUS"}
             )
@@ -70,15 +70,20 @@ class Command(BaseCommand):
             start_dt = datetime.combine(datetime.today(), start_time)
             end_time = (start_dt + timedelta(hours=1, minutes=30)).time()
             
-            # Create class event
-            ClassEvent.objects.get_or_create(
-                cohort=cohort,
-                subject=subj,
-                instructor=instructor,
+            # Create base Event
+            event_id, _ = Event.objects.get_or_create(
                 day=day_code,
                 start_time=start_time,
                 end_time=end_time,
-                defaults={"status": "CLASS"}
+                status="CLASS"
+            )
+            
+            # Create class event
+            ClassEvent.objects.get_or_create(
+                cohort_id=cohort_id,
+                subject_id=subj_id,
+                instructor_id=instructor_id,
+                event_id=event_id
             )
             lesson_count += 1
             
@@ -95,11 +100,17 @@ class Command(BaseCommand):
             start_time = parse_time(start_str)
             end_time = parse_time(end_str)
             
-            GymEvent.objects.get_or_create(
+            # Create base Event
+            event_id, _ = Event.objects.get_or_create(
                 day=day_code,
                 start_time=start_time,
                 end_time=end_time,
-                status="GYM",
+                status="GYM"
+            )
+            
+            # Create Gym Event
+            GymEvent.objects.get_or_create(
+                event_id=event_id,
                 gender=session.upper()
             )
             gym_count += 1
@@ -123,6 +134,7 @@ class Command(BaseCommand):
             start_time = parse_time(start_str)
             end_time = parse_time(end_str)
             
+            # Create base Event
             Event.objects.get_or_create(
                 day=day_code,
                 start_time=start_time,
@@ -145,14 +157,10 @@ class Command(BaseCommand):
             if category.lower() == "off campus":
                 location_val = "OFF_CAMPUS"
                 
-            # clean phone to int
-            phone_digits = ''.join(c for c in phone if c.isdigit())
-            phone_num = int(phone_digits) if phone_digits else 0
-            
             Contact.objects.get_or_create(
                 full_name=name,
                 role=details or "Staff",
-                phone_number=phone_num,
+                phone_number=phone,
                 sector="ADMIN", # Default sector
                 location=location_val
             )

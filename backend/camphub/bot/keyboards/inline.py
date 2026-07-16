@@ -78,11 +78,13 @@ def get_contacts_submenu_kb() -> InlineKeyboardMarkup:
     builder.adjust(2)
     return builder.as_markup()
 
-def get_days_kb(prefix: str) -> InlineKeyboardMarkup:
+def get_days_kb(prefix: str, include_all: bool = False) -> InlineKeyboardMarkup:
     days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     builder = InlineKeyboardBuilder()
     for day in days:
         builder.button(text=day, callback_data=f"{prefix}_{day}")
+    if include_all:
+        builder.button(text="All 📅", callback_data=f"{prefix}_All")
     builder.adjust(2)
     return builder.as_markup()
 

@@ -1,6 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager, UserManager
-from camphub.models import Cohort
+
 
 class UserAccountManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -40,7 +40,7 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     telegram_id = models.BigIntegerField(unique=True, null=True, blank=True)
 
     cohort = models.ForeignKey(
-        Cohort, on_delete=models.SET_NULL, null=True, blank=True)
+        "camphub.Cohort", on_delete=models.SET_NULL, null=True, blank=True)
     objects = UserAccountManager()
 
     USERNAME_FIELD = 'email'
