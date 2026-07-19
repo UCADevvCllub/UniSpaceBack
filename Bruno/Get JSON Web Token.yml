@@ -1,0 +1,25 @@
+info:
+  name: Get JSON Web Token
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:8000/auth/jwt/create/
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+          "email": "superworker@gmail.com",
+          "password": "worker1234"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

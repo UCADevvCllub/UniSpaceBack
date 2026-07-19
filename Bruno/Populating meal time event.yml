@@ -1,0 +1,27 @@
+info:
+  name: Populating meal time event
+  type: http
+  seq: 7
+
+http:
+  method: POST
+  url: http://127.0.0.1:8000/api/meal-times/
+  body:
+    type: json
+    data: |+
+      { 
+          "meal_name": "Breakfast",
+          "event_data": {
+            "day": "MON",
+            "start_time": "19:30:00",
+            "end_time": "19:46:00"
+        }
+      }
+
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
