@@ -1,7 +1,7 @@
 info:
   name: Getting all class events
   type: http
-  seq: 18
+  seq: 12
 
 http:
   method: GET

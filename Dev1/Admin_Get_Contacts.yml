@@ -1,0 +1,23 @@
+info:
+  name: Admin_Get_Contacts
+  type: http
+  seq: 5
+
+http:
+  method: GET
+  url: http://127.0.0.1:8000/api/contact-entries/
+  headers:
+    - name: Authorization
+      value: JWT {{token}}
+  auth: inherit
+
+runtime:
+  variables:
+    - name: token
+      value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzgyODAwMzE3LCJpYXQiOjE3ODI3OTY3MTcsImp0aSI6Ijg4NGYwZjE3ZWJmZDRlMDlhYTUwOTk2YTIyMjNiOTAwIiwidXNlcl9pZCI6IjEifQ.SPM_izOXvaRwkC1eugQZ-Vel5YaquyGjTq_0n_HMsFc
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

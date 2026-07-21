@@ -1,0 +1,29 @@
+info:
+  name: ClassEvent
+  type: http
+  seq: 7
+
+http:
+  method: POST
+  url: http://127.0.0.1:8000/api/class-events/
+  body:
+    type: json
+    data: |-
+      {
+          "subject_id": 1,
+          "instructor_id": 5,
+          "cohort_id": 5,
+          "event_data": {
+              "day": "MON",
+              "start_time": "09:00:00",
+              "end_time": "10:30:00"
+          },
+          "room_id": 1
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
