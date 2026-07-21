@@ -14,49 +14,25 @@ class Room(models.Model):
 
 
 class StudyYear(models.Model):
-    CHOICES = [
-        ('FESH', 'Fresh'),
-        ('SOPH', 'Soph'),
-        ('JUN', 'Jun'),
-        ('SEN', 'Sen'),
-    ]
-    year_name = models.CharField(max_length=50, choices=CHOICES, default='SOF')
+    year_name = models.CharField(max_length=50)
 
     def __str__(self):
         return self.year_name
 
 
 class Subject(models.Model):
-    CHOICES = [
-        ('MATH', 'Math'),
-        ('ENGLISH', 'English'),
-        ('PHYSICS', 'Physics'),
-        ('KYRGIZ', 'Kyrgiz'),
-    ]
-    name = models.CharField(max_length=50, choices=CHOICES)
+    name = models.CharField(max_length=50)
 
     def __str__(self):
         return self.name
 
 
 class Cohort(models.Model):
-<<<<<<< HEAD
     study_year_id = models.ForeignKey(StudyYear, on_delete=models.CASCADE, null=True, blank=True, db_column='study_year_id')
     cohort_name = models.CharField(max_length=50)
-    room_id = models.ForeignKey(Room, on_delete=models.CASCADE, null=True, blank=True, db_column='room_id')
-=======
-    CHOICES = [
-        ('CM', 'CM'),
-        ('CS', 'CS'),
-    ]
-    study_year_id = models.ForeignKey(
-        StudyYear, on_delete=models.CASCADE, null=True, blank=True, db_column='study_year_id')
-    cohort_name = models.CharField(max_length=50, choices=CHOICES)
 
     def __str__(self):
         return self.cohort_name
-
->>>>>>> origin/main
 
 class Event(models.Model):
     CHOICES = [
@@ -73,10 +49,7 @@ class Event(models.Model):
     day = models.CharField(max_length=3, choices=DAYS, default='MON')
     start_time = models.TimeField()
     end_time = models.TimeField()
-<<<<<<< HEAD
-=======
 
->>>>>>> origin/main
     status = models.CharField(
         max_length=50, choices=CHOICES, default='GYM')
     date = models.DateField(null=True, blank=True)
@@ -177,6 +150,12 @@ class BubbleEvent(models.Model):
         Event, on_delete=models.CASCADE, null=True, blank=True, db_column='event_id')
 
 
+class TVLounge(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+    
+    def __str__(self):
+        return self.name
+
 
 # end of new section
 
@@ -210,13 +189,15 @@ class Contact(models.Model):
 class TVBooking(models.Model):
     user_id = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True, db_column='user_id')
-    lounge_name = models.CharField(max_length=50)
+    lounge_id = models.ForeignKey(
+        TVLounge, on_delete=models.CASCADE, null=True, blank=True, db_column='lounge_id')
     booker_name = models.CharField(max_length=100)
     event_id = models.ForeignKey(
         Event, on_delete=models.CASCADE, null=True, blank=True, db_column='event_id')
     def __str__(self):
         event_str = f"{self.event_id.day} {self.event_id.start_time}" if self.event_id else "No Event"
-        return f"{self.booker_name} - {self.lounge_name} ({event_str})"
+        lounge_str = self.lounge_id.name if self.lounge_id else "No Lounge"
+        return f"{self.booker_name} - {lounge_str} ({event_str})"
 
 
 class Reminder(models.Model):

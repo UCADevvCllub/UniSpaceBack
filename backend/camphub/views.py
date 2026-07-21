@@ -3,10 +3,7 @@ from django.db.models import Q
 from .serializers import EventSerializer, ContactSerializer, ScheduleSerializer, BubbleEventSerializer, GymEventSerializer, MealTimeSerializer
 from .models import Event, Contact, ClassEvent, BubbleEvent, GymEvent, MealTime
 
-<<<<<<< HEAD
-=======
 
->>>>>>> origin/main
 class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.all()
     serializer_class = EventSerializer

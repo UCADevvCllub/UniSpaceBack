@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('camphub', '0004_classevent_room_id'),
+        ('camphub', '0010_remove_reminder_day_remove_reminder_reminder_type_and_more'),
     ]
 
     operations = [

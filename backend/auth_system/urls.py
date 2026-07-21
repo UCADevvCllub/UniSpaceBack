@@ -5,10 +5,7 @@ from camphub import views
 from rest_framework.routers import DefaultRouter
 from django.contrib import admin
 
-<<<<<<< HEAD
-=======
 
->>>>>>> origin/main
 router = DefaultRouter()
 router.register(r'schedule-entries', views.EventViewSet)
 router.register(r'contacts', views.ContactViewSet)
