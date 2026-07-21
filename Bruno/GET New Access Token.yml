@@ -1,0 +1,24 @@
+info:
+  name: GET New Access Token
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: http://localhost:8000/auth/jwt/refresh/
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+          "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc3OTM3OTE4NSwiaWF0IjoxNzc5MjkyNzg1LCJqdGkiOiIxYzg4NzFjMDI5NzE0NDc2ODg3MzUzOWE4MDIyZGQ4MSIsInVzZXJfaWQiOiIxIn0.TQB6McZpIxzMLB0PnPL-OOKNW35KchrM0Q0638G6_NM"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

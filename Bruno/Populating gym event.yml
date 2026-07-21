@@ -1,0 +1,26 @@
+info:
+  name: Populating gym event
+  type: http
+  seq: 10
+
+http:
+  method: POST
+  url: http://127.0.0.1:8000/api/gym-events/
+  body:
+    type: json
+    data: |
+      { 
+          "gender": "MALE",
+          "event_data": {
+            "day": "MON",
+            "start_time": "16:00:00",
+            "end_time": "17:40:01"
+        }
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
