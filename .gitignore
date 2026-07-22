@@ -8,7 +8,6 @@ venv/
 .postman
 postman
 frontend/.env
-Auth
 __pycache__/
 *.pyc
 backend/db.sqlite3

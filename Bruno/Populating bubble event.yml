@@ -1,0 +1,26 @@
+info:
+  name: Populating bubble event
+  type: http
+  seq: 7
+
+http:
+  method: POST
+  url: http://127.0.0.1:8000/api/bubble-events/
+  body:
+    type: json
+    data: |-
+      { 
+          "name": "Soccer",
+          "event_data": {
+            "day": "MON",
+            "start_time":"22:00:00",
+            "end_time": "23:45:00"
+        }
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

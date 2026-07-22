@@ -1,9 +1,12 @@
 from rest_framework import viewsets, permissions
 from django.db.models import Q
-from .serializers import EventSerializer, ContactSerializer, ScheduleSerializer, BubbleEventSerializer, GymEventSerializer, MealTimeSerializer
-from .models import Event, Contact, ClassEvent, BubbleEvent, GymEvent, MealTime
+from .serializers import EventSerializer, ContactSerializer, ScheduleSerializer, BubbleEventSerializer, GymEventSerializer, MealTimeSerializer, ClassEventSerializer, SubjectSerializer, InstructorSerializer, CohortSerializer, RoomSerializer
+from .models import Event, Contact, ClassEvent, BubbleEvent, GymEvent, MealTime, Subject, Instructor, Cohort, Room
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> main
 class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.all()
     serializer_class = EventSerializer
@@ -68,4 +71,40 @@ class GymEventViewSet(viewsets.ModelViewSet):
 class MealTimeViewSet(viewsets.ModelViewSet):
     queryset = MealTime.objects.all()
     serializer_class = MealTimeSerializer
+    permission_classes = [permissions.AllowAny]
+
+
+class ClassEventViewSet(viewsets.ModelViewSet):
+    queryset = ClassEvent.objects.all()
+    serializer_class = ClassEventSerializer
+
+
+    # permission_classes = [permissions.IsAdminUser]
+    permission_classes = [permissions.AllowAny]
+
+
+
+
+
+class SubjectViewSet(viewsets.ModelViewSet):
+    queryset = Subject.objects.all()
+    serializer_class = SubjectSerializer
+    permission_classes = [permissions.AllowAny]
+
+
+class InstructorViewSet(viewsets.ModelViewSet):
+    queryset = Instructor.objects.all()
+    serializer_class = InstructorSerializer
+    permission_classes = [permissions.AllowAny]
+
+
+class CohortViewSet(viewsets.ModelViewSet):
+    queryset = Cohort.objects.all()
+    serializer_class = CohortSerializer
+    permission_classes = [permissions.AllowAny]
+
+
+class RoomViewSet(viewsets.ModelViewSet):
+    queryset = Room.objects.all()
+    serializer_class = RoomSerializer
     permission_classes = [permissions.AllowAny]

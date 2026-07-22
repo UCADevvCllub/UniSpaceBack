@@ -28,12 +28,26 @@ class Subject(models.Model):
 
 
 class Cohort(models.Model):
+<<<<<<< HEAD
     study_year_id = models.ForeignKey(StudyYear, on_delete=models.CASCADE, null=True, blank=True, db_column='study_year_id')
     cohort_name = models.CharField(max_length=50)
+=======
+    CHOICES = [
+        ('CM', 'CM'),
+        ('CS', 'CS'),
+    ]
+    study_year_id = models.ForeignKey(
+        StudyYear, on_delete=models.CASCADE, null=True, blank=True, db_column='study_year_id')
+    cohort_name = models.CharField(max_length=50, choices=CHOICES)
+>>>>>>> main
 
     def __str__(self):
         return self.cohort_name
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> main
 class Event(models.Model):
     CHOICES = [
         ('GYM', 'Gym'),
@@ -49,7 +63,10 @@ class Event(models.Model):
     day = models.CharField(max_length=3, choices=DAYS, default='MON')
     start_time = models.TimeField()
     end_time = models.TimeField()
+<<<<<<< HEAD
 
+=======
+>>>>>>> main
     status = models.CharField(
         max_length=50, choices=CHOICES, default='GYM')
     date = models.DateField(null=True, blank=True)
@@ -83,7 +100,7 @@ class Instructor(models.Model):
         max_length=20, choices=STATUS_TYPE, default='ON_CAMPUS')
 
     def __str__(self):
-        return self.first_name
+        return f"{self.first_name} {self.last_name}"
 
 
 class ClassEvent(models.Model):

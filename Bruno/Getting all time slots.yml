@@ -1,0 +1,15 @@
+info:
+  name: Getting all time slots
+  type: http
+  seq: 13
+
+http:
+  method: GET
+  url: http://127.0.0.1:8000/api/schedule-entries/
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
