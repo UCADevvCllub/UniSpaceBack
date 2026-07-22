@@ -14,40 +14,39 @@ class Room(models.Model):
 
 
 class StudyYear(models.Model):
-    year_name = models.CharField(max_length=50)
+    CHOICES = [
+        ('FESH', 'Fresh'),
+        ('SOPH', 'Soph'),
+        ('JUN', 'Jun'),
+        ('SEN', 'Sen'),
+    ]
+    year_name = models.CharField(max_length=50, choices=CHOICES, default='SOF')
 
     def __str__(self):
         return self.year_name
 
 
 class Subject(models.Model):
-    name = models.CharField(max_length=50)
+    CHOICES = [
+        ('MATH', 'Math'),
+        ('ENGLISH', 'English'),
+        ('PHYSICS', 'Physics'),
+        ('KYRGIZ', 'Kyrgiz'),
+    ]
+    name = models.CharField(max_length=50, choices=CHOICES)
 
     def __str__(self):
         return self.name
 
 
 class Cohort(models.Model):
-<<<<<<< HEAD
     study_year_id = models.ForeignKey(StudyYear, on_delete=models.CASCADE, null=True, blank=True, db_column='study_year_id')
     cohort_name = models.CharField(max_length=50)
-=======
-    CHOICES = [
-        ('CM', 'CM'),
-        ('CS', 'CS'),
-    ]
-    study_year_id = models.ForeignKey(
-        StudyYear, on_delete=models.CASCADE, null=True, blank=True, db_column='study_year_id')
-    cohort_name = models.CharField(max_length=50, choices=CHOICES)
->>>>>>> main
+    room_id = models.ForeignKey(Room, on_delete=models.CASCADE, null=True, blank=True, db_column='room_id')
 
     def __str__(self):
         return self.cohort_name
 
-<<<<<<< HEAD
-=======
-
->>>>>>> main
 class Event(models.Model):
     CHOICES = [
         ('GYM', 'Gym'),
@@ -63,10 +62,6 @@ class Event(models.Model):
     day = models.CharField(max_length=3, choices=DAYS, default='MON')
     start_time = models.TimeField()
     end_time = models.TimeField()
-<<<<<<< HEAD
-
-=======
->>>>>>> main
     status = models.CharField(
         max_length=50, choices=CHOICES, default='GYM')
     date = models.DateField(null=True, blank=True)
@@ -100,7 +95,7 @@ class Instructor(models.Model):
         max_length=20, choices=STATUS_TYPE, default='ON_CAMPUS')
 
     def __str__(self):
-        return f"{self.first_name} {self.last_name}"
+        return self.first_name
 
 
 class ClassEvent(models.Model):
@@ -167,12 +162,6 @@ class BubbleEvent(models.Model):
         Event, on_delete=models.CASCADE, null=True, blank=True, db_column='event_id')
 
 
-class TVLounge(models.Model):
-    name = models.CharField(max_length=50, unique=True)
-    
-    def __str__(self):
-        return self.name
-
 
 # end of new section
 
@@ -203,6 +192,14 @@ class Contact(models.Model):
     location = models.CharField(
         max_length=20, choices=LOCATION_CHOICES, null=True, blank=True)
 
+
+class TVLounge(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+
+    def __str__(self):
+        return self.name
+
+
 class TVBooking(models.Model):
     user_id = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True, db_column='user_id')
@@ -211,6 +208,7 @@ class TVBooking(models.Model):
     booker_name = models.CharField(max_length=100)
     event_id = models.ForeignKey(
         Event, on_delete=models.CASCADE, null=True, blank=True, db_column='event_id')
+
     def __str__(self):
         event_str = f"{self.event_id.day} {self.event_id.start_time}" if self.event_id else "No Event"
         lounge_str = self.lounge_id.name if self.lounge_id else "No Lounge"
