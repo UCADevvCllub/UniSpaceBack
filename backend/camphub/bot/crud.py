@@ -34,6 +34,7 @@ class LessonWrapper:
 class GymSlotWrapper:
     def __init__(self, entry):
         self.id = entry.id
+        self.event_id = entry.event_id.id if entry.event_id else None
         # GymEvent time/day fields are now on the related Event
         self.day_of_week = day_reverse.get(entry.event_id.day, entry.event_id.day) if entry.event_id else ""
         self.start_time_str = entry.event_id.start_time.strftime("%H:%M") if entry.event_id and entry.event_id.start_time else ""
@@ -43,11 +44,12 @@ class GymSlotWrapper:
 
 class BubbleWrapper:
     def __init__(self, entry):
+        # entry is now a BubbleEvent object
         self.id = entry.id
-        self.day_of_week = day_reverse.get(entry.day, entry.day)
-        self.sport_name = entry.status.replace(
-            "_", " ").title() if entry.status else ""
-        self.time_str = f"{entry.start_time.strftime('%H:%M')} – {entry.end_time.strftime('%H:%M')}"
+        self.event_id = entry.event_id.id if entry.event_id else None
+        self.day_of_week = day_reverse.get(entry.event_id.day, entry.event_id.day) if entry.event_id else ""
+        self.sport_name = entry.name if entry.name else ""
+        self.time_str = f"{entry.event_id.start_time.strftime('%H:%M')} – {entry.event_id.end_time.strftime('%H:%M')}" if entry.event_id else ""
 
 
 class ContactWrapper:
@@ -64,7 +66,7 @@ class TVBookingWrapper:
         self.id = entry.id
         # FK field is named user_id, so the related object is entry.user_id
         self.user_id = entry.user_id.telegram_id if entry.user_id else None
-        self.lounge_name = entry.lounge_name
+        self.lounge_name = entry.lounge_id.name if entry.lounge_id else "Unknown Lounge"
         self.booker_name = entry.booker_name
         self.booking_date = entry.event_id.date.strftime("%d.%m") if (entry.event_id and entry.event_id.date) else ""
         self.booking_time = entry.event_id.start_time.strftime("%H:%M") if (entry.event_id and entry.event_id.start_time) else ""
@@ -90,6 +92,8 @@ class ReminderWrapper:
                 self.reminder_type = "bubble"
             elif event.status == 'TV':
                 self.reminder_type = "tv"
+            elif event.status == 'MEAL_TIME':
+                self.reminder_type = "meal"
             else:
                 self.reminder_type = "unknown"
                 
@@ -107,11 +111,23 @@ class ReminderWrapper:
             elif event.status == 'GYM':
                 self.subject_name = "Gym Session"
             elif event.status == 'BUBBLE':
-                self.subject_name = "Bubble Sports"
+                # Get the actual sport name from BubbleEvent
+                from camphub.models import BubbleEvent
+                bubble_events = list(event.bubbleevent_set.all())
+                bubble_event = bubble_events[0] if bubble_events else None
+                self.subject_name = bubble_event.name if bubble_event else "Bubble Sports"
+                self.event_name = bubble_event.name if bubble_event else "Bubble Sports"
+            elif event.status == 'MEAL_TIME':
+                # Get the actual meal name from MealTime
+                from camphub.models import MealTime
+                meal_times = list(event.mealtime_set.all())
+                meal_time = meal_times[0] if meal_times else None
+                self.subject_name = meal_time.meal_name if meal_time else "Meal"
+                self.event_name = meal_time.meal_name if meal_time else "Meal"
             elif event.status == 'TV':
                 tv_bookings = list(event.tvbooking_set.all())
                 tv_booking = tv_bookings[0] if tv_bookings else None
-                self.subject_name = tv_booking.lounge_name if tv_booking else "TV Lounge"
+                self.subject_name = tv_booking.lounge_id.name if (tv_booking and tv_booking.lounge_id) else "TV Lounge"
             else:
                 self.subject_name = "Unknown Event"
         else:
@@ -237,17 +253,21 @@ def remove_lesson(lesson_id: int):
 # --- Gym Slots CRUD (GymEvent + Event) ---
 
 @sync_to_async
-def get_gym_slots_for_day(day: str):
+def get_gym_slots_for_day(day: str, gender: str = None):
     day_code = day_mapping.get(day, day)
-    entries = GymEvent.objects.filter(
-        event_id__day=day_code,
-    ).select_related('event_id').order_by('event_id__start_time')
+    queryset = GymEvent.objects.filter(event_id__day=day_code)
+    if gender:
+        queryset = queryset.filter(gender__iexact=gender)
+    entries = queryset.select_related('event_id').order_by('event_id__start_time')
     return [GymSlotWrapper(e) for e in entries]
 
 
 @sync_to_async
-def get_all_gym_slots():
-    entries = GymEvent.objects.all().select_related('event_id').order_by('event_id__day', 'event_id__start_time')
+def get_all_gym_slots(gender: str = None):
+    queryset = GymEvent.objects.all()
+    if gender:
+        queryset = queryset.filter(gender__iexact=gender)
+    entries = queryset.select_related('event_id').order_by('event_id__day', 'event_id__start_time')
     return [GymSlotWrapper(e) for e in entries]
 
 
@@ -274,24 +294,48 @@ def add_gym_slot(day: str, start_str: str, end_str: str, session_type: str = "MA
 
 @sync_to_async
 def get_bubble_sports_for_day(day: str):
+    from camphub.models import BubbleEvent
     day_code = day_mapping.get(day, day)
-    entries = Event.objects.filter(
-        day=day_code,
-        status="BUBBLE",
-    ).order_by('start_time')
+    entries = BubbleEvent.objects.filter(
+        event_id__day=day_code,
+        event_id__status="BUBBLE",
+    ).select_related('event_id').order_by('event_id__start_time')
     return [BubbleWrapper(e) for e in entries]
 
 
 @sync_to_async
 def get_all_bubble_sports():
-    entries = Event.objects.filter(
-        status="BUBBLE",
-    ).order_by('day', 'start_time')
+    from camphub.models import BubbleEvent
+    entries = BubbleEvent.objects.filter(
+        event_id__status="BUBBLE",
+    ).select_related('event_id').order_by('event_id__day', 'event_id__start_time')
+    return [BubbleWrapper(e) for e in entries]
+
+
+@sync_to_async
+def get_unique_bubble_sports():
+    from camphub.models import BubbleEvent
+    # Get unique sport names from all bubble events, excluding certain sports from reminders
+    excluded_sports = ['Altai-Naryn Football School', 'Cleaning & Disinfection']
+    sport_names = BubbleEvent.objects.filter(
+        event_id__status="BUBBLE"
+    ).exclude(name__in=excluded_sports).values_list('name', flat=True).distinct()
+    return sorted(list(sport_names))
+
+
+@sync_to_async
+def get_bubble_sports_by_name(sport_name: str):
+    from camphub.models import BubbleEvent
+    entries = BubbleEvent.objects.filter(
+        name=sport_name,
+        event_id__status="BUBBLE",
+    ).select_related('event_id').order_by('event_id__day', 'event_id__start_time')
     return [BubbleWrapper(e) for e in entries]
 
 
 @sync_to_async
 def add_bubble_sport(day: str, sport: str, time_range_str: str):
+    from camphub.models import BubbleEvent
     import re
     day_code = day_mapping.get(day, "MON")
     parts = re.split(r'[–-]', time_range_str)
@@ -302,6 +346,11 @@ def add_bubble_sport(day: str, sport: str, time_range_str: str):
         start_time=start_time,
         end_time=end_time,
         status="BUBBLE"
+    )
+    # Create the related BubbleEvent with the sport name
+    bubble_event = BubbleEvent.objects.create(
+        event_id=entry,
+        name=sport
     )
     return entry
 
@@ -320,14 +369,14 @@ def get_contacts_by_category(category: str):
 @sync_to_async
 def get_tv_bookings(user_id: int):
     # FK field named user_id → lookup is user_id__telegram_id
-    entries = TVBooking.objects.filter(user_id__telegram_id=user_id).select_related('user_id', 'event_id')
+    entries = TVBooking.objects.filter(user_id__telegram_id=user_id).select_related('user_id', 'event_id', 'lounge_id')
     return [TVBookingWrapper(e) for e in entries]
 
 
 @sync_to_async
 def get_tv_booking_by_id(booking_id: int):
     try:
-        b = TVBooking.objects.select_related('user_id', 'event_id').get(id=booking_id)
+        b = TVBooking.objects.select_related('user_id', 'event_id', 'lounge_id').get(id=booking_id)
         return TVBookingWrapper(b)
     except TVBooking.DoesNotExist:
         return None
@@ -335,7 +384,9 @@ def get_tv_booking_by_id(booking_id: int):
 
 @sync_to_async
 def add_tv_booking(user_id: int, lounge_name: str, booker_name: str, booking_date: str, booking_time: str):
+    from camphub.models import TVLounge
     u = UserAccount.objects.get(telegram_id=user_id)
+    lounge, _ = TVLounge.objects.get_or_create(name=lounge_name)
     try:
         parsed_date = datetime.strptime(booking_date, "%d.%m").date().replace(year=datetime.now().year)
         day_of_week = parsed_date.strftime("%a").upper()
@@ -357,7 +408,7 @@ def add_tv_booking(user_id: int, lounge_name: str, booker_name: str, booking_dat
     
     b = TVBooking.objects.create(
         user_id=u,
-        lounge_name=lounge_name,
+        lounge_id=lounge,
         booker_name=booker_name,
         event_id=event
     )
@@ -366,9 +417,11 @@ def add_tv_booking(user_id: int, lounge_name: str, booker_name: str, booking_dat
 
 @sync_to_async
 def update_tv_booking(booking_id: int, lounge_name: str, booker_name: str, booking_date: str, booking_time: str):
+    from camphub.models import TVLounge
     try:
         b = TVBooking.objects.select_related('event_id').get(id=booking_id)
-        b.lounge_name = lounge_name
+        lounge, _ = TVLounge.objects.get_or_create(name=lounge_name)
+        b.lounge_id = lounge
         b.booker_name = booker_name
         
         try:
@@ -425,7 +478,9 @@ def get_user_reminders(user_id: int):
         'user_id', 'event_id'
     ).prefetch_related(
         'event_id__classevent_set__subject_id',
-        'event_id__tvbooking_set'
+        'event_id__tvbooking_set__lounge_id',
+        'event_id__bubbleevent_set',
+        'event_id__mealtime_set'
     )
     return [ReminderWrapper(e) for e in entries]
 
@@ -436,7 +491,9 @@ def get_all_reminders():
         'user_id', 'event_id'
     ).prefetch_related(
         'event_id__classevent_set__subject_id',
-        'event_id__tvbooking_set'
+        'event_id__tvbooking_set__lounge_id',
+        'event_id__bubbleevent_set',
+        'event_id__mealtime_set'
     )
     return [ReminderWrapper(e) for e in entries]
 
@@ -458,8 +515,10 @@ def add_reminder(user_id: int, r_type: str, subject: str, day: str, time_str: st
         event_status = "CLASS"
         if r_type == "gym":
             event_status = "GYM"
-        elif r_type == "bubble":
+        elif r_type in ["bubble", "bub"]:
             event_status = "BUBBLE"
+        elif r_type == "meal":
+            event_status = "MEAL_TIME"
         event = Event.objects.filter(day=day_code, start_time=start_time, status=event_status).first()
         
     if event:
@@ -491,8 +550,10 @@ def delete_reminder(user_id: int, r_type: str, subject: str, day: str, time_str:
         event_status = "CLASS"
         if r_type == "gym":
             event_status = "GYM"
-        elif r_type == "bubble":
+        elif r_type in ["bubble", "bub"]:
             event_status = "BUBBLE"
+        elif r_type == "meal":
+            event_status = "MEAL_TIME"
         event = Event.objects.filter(day=day_code, start_time=start_time, status=event_status).first()
         
     if event:
