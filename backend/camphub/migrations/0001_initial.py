@@ -105,6 +105,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('cohort_name', models.CharField(choices=[('CM', 'CM'), ('CS', 'CS')], max_length=50)),
+                ('room_id', models.ForeignKey(blank=True, db_column='room_id', null=True, on_delete=django.db.models.deletion.CASCADE, to='camphub.room')),
                 ('study_year_id', models.ForeignKey(blank=True, db_column='study_year_id', null=True, on_delete=django.db.models.deletion.CASCADE, to='camphub.studyyear')),
             ],
         ),
