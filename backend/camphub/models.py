@@ -193,16 +193,26 @@ class Contact(models.Model):
     location = models.CharField(
         max_length=20, choices=LOCATION_CHOICES, null=True, blank=True)
 
+class TVLounge(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+
+    def __str__(self):
+        return self.name
+
+
 class TVBooking(models.Model):
     user_id = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True, db_column='user_id')
-    lounge_name = models.CharField(max_length=50)
+    lounge_id = models.ForeignKey(
+        TVLounge, on_delete=models.CASCADE, null=True, blank=True, db_column='lounge_id')
     booker_name = models.CharField(max_length=100)
     event_id = models.ForeignKey(
         Event, on_delete=models.CASCADE, null=True, blank=True, db_column='event_id')
+
     def __str__(self):
+        lounge_str = self.lounge_id.name if self.lounge_id else "No Lounge"
         event_str = f"{self.event_id.day} {self.event_id.start_time}" if self.event_id else "No Event"
-        return f"{self.booker_name} - {self.lounge_name} ({event_str})"
+        return f"{self.booker_name} - {lounge_str} ({event_str})"
 
 
 class Reminder(models.Model):
