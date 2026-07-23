@@ -2,7 +2,10 @@ from rest_framework.exceptions import ValidationError
 from rest_framework import serializers
 
 from .bot.crud import day_mapping
-from .models import Event, Contact, ClassEvent, StudyYear, GymEvent, MealTime, BubbleEvent, Subject, Instructor, Cohort, Room
+from .models import Event, Contact, ClassEvent, StudyYear, GymEvent, MealTime, BubbleEvent, Subject, Instructor, Cohort, Room, TVLounge, TVBooking
+
+
+
 
 
 class SubjectSerializer(serializers.ModelSerializer):
@@ -37,6 +40,37 @@ class EventSerializer(serializers.ModelSerializer):
     class Meta:
         model = Event
         fields = '__all__'
+
+class TVLoungeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TVLounge
+        fields = '__all__'
+
+class TVBookingSerializer(serializers.ModelSerializer):
+    lounge_detail = TVLoungeSerializer(source='lounge_id', read_only=True)
+    event_detail = EventSerializer(source='event_id', read_only=True)
+    event_data = EventSerializer(write_only=True, required=False)
+
+    class Meta:
+        model = TVBooking
+        fields = [
+            'id', 'user_id', 'lounge_id', 'booker_name', 'event_id',
+            'lounge_detail', 'event_detail', 'event_data'
+        ]
+
+    def create(self, validated_data):
+        event_data = validated_data.pop('event_data', None)
+        if event_data:
+            event = Event.objects.create(
+                day=event_data.get('day', 'MON'),
+                start_time=event_data['start_time'],
+                end_time=event_data['end_time'],
+                status='TV',
+                date=event_data.get('date')
+            )
+            validated_data['event_id'] = event
+
+        return TVBooking.objects.create(**validated_data)
 
 class ContactSerializer(serializers.ModelSerializer):
     class Meta:
