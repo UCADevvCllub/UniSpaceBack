@@ -1,7 +1,7 @@
 info:
   name: Filtering class event by study year
   type: http
-  seq: 26
+  seq: 16
 
 http:
   method: GET

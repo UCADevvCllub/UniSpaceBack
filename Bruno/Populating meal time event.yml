@@ -1,7 +1,7 @@
 info:
   name: Populating meal time event
   type: http
-  seq: 7
+  seq: 5
 
 http:
   method: POST

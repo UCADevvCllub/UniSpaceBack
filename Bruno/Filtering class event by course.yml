@@ -1,7 +1,7 @@
 info:
   name: Filtering class event by course
   type: http
-  seq: 24
+  seq: 15
 
 http:
   method: GET

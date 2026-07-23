@@ -1,7 +1,8 @@
 from rest_framework import viewsets, permissions
 from django.db.models import Q
-from .serializers import EventSerializer, StudyYearSerializer, ContactSerializer, ScheduleSerializer, BubbleEventSerializer, GymEventSerializer, MealTimeSerializer, ClassEventSerializer, SubjectSerializer, InstructorSerializer, CohortSerializer, RoomSerializer
-from .models import Event, Contact, StudyYear, ClassEvent, BubbleEvent, GymEvent, MealTime, Subject, Instructor, Cohort, Room
+from .serializers import EventSerializer, ContactSerializer, ScheduleSerializer, BubbleEventSerializer, GymEventSerializer, MealTimeSerializer, ClassEventSerializer, SubjectSerializer, InstructorSerializer, CohortSerializer, RoomSerializer
+from .models import Event, Contact, ClassEvent, BubbleEvent, GymEvent, MealTime, Subject, Instructor, Cohort, Room
+
 
 class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.all()
@@ -26,18 +27,8 @@ class ContactViewSet(viewsets.ModelViewSet):
             permission_classes = [permissions.AllowAny]
         else:
             # Only admins can change
-            permission_classes = [permissions.AllowAny]
+            permission_classes = [permissions.IsAdminUser]
 
-        return [permission() for permission in permission_classes]
-
-class StudyYearViewSet(viewsets.ModelViewSet):
-    queryset = StudyYear.objects.all()
-    serializer_class = StudyYearSerializer
-    def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
-            permission_classes = [permissions.AllowAny]
-        else:
-            permission_classes = [permissions.AllowAny] # Or IsAdminUser
         return [permission() for permission in permission_classes]
 
 

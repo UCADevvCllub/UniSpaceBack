@@ -1,7 +1,7 @@
 info:
   name: GET New Access Token
   type: http
-  seq: 4
+  seq: 3
 
 http:
   method: POST

@@ -1,7 +1,7 @@
 info:
   name: Getting all time slots
   type: http
-  seq: 20
+  seq: 13
 
 http:
   method: GET
