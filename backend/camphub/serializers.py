@@ -2,7 +2,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework import serializers
 
 from .bot.crud import day_mapping
-from .models import Event, Contact, ClassEvent, GymEvent, MealTime, BubbleEvent, Subject, Instructor, Cohort, Room
+from .models import Event, Contact, ClassEvent, StudyYear, GymEvent, MealTime, BubbleEvent, Subject, Instructor, Cohort, Room
 
 
 class SubjectSerializer(serializers.ModelSerializer):
@@ -28,6 +28,10 @@ class RoomSerializer(serializers.ModelSerializer):
         model = Room
         fields = '__all__'
 
+class StudyYearSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StudyYear
+        fields = '__all__'
 
 class EventSerializer(serializers.ModelSerializer):
     class Meta:
