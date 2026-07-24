@@ -1,0 +1,24 @@
+info:
+  name: Populating contact event
+  type: http
+  seq: 29
+
+http:
+  method: POST
+  url: http://127.0.0.1:8000/api/contacts/
+  body:
+    type: json
+    data: |
+      {
+        "full_name": "John Doe",
+        "role": "Chief Security",
+        "phone_number": "+996 555 123 456",
+        "sector": "SECURITY", 
+        "location": "ON_CAMPUS"
+      }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

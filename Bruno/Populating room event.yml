@@ -1,0 +1,21 @@
+info:
+  name: Populating room event
+  type: http
+  seq: 31
+
+http:
+  method: POST
+  url: http://127.0.0.1:8000/api/room-entries/
+  body:
+    type: json
+    data: |
+      {
+        "room_number": "Room 101"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

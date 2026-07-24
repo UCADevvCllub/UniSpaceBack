@@ -31,6 +31,7 @@ def get_sports_submenu_kb() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="🏋️ Gym", callback_data="sports_gym")
     builder.button(text="🏀 Bubble", callback_data="sports_bubble")
+    builder.button(text="🍽 Meal Time", callback_data="sports_meal")
     builder.button(text="⏰ Set Reminder", callback_data="sports_reminder")
     builder.adjust(1)
     return builder.as_markup()
@@ -86,6 +87,14 @@ def get_days_kb(prefix: str, include_all: bool = False) -> InlineKeyboardMarkup:
     if include_all:
         builder.button(text="All 📅", callback_data=f"{prefix}_All")
     builder.adjust(2)
+    return builder.as_markup()
+
+def get_gym_reminder_days_kb(prefix: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Monday / Wednesday / Friday", callback_data=f"{prefix}_MWF")
+    builder.button(text="Tuesday / Thursday / Saturday", callback_data=f"{prefix}_TTS")
+    builder.button(text="All (Individual Days)", callback_data=f"{prefix}_ALL")
+    builder.adjust(1)
     return builder.as_markup()
 
 def get_reminder_toggle_kb(callback_prefix: str) -> InlineKeyboardMarkup:

@@ -33,6 +33,10 @@ class RoomSerializer(serializers.ModelSerializer):
         model = Room
         fields = '__all__'
 
+class StudyYearSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StudyYear
+        fields = '__all__'
 
 class EventSerializer(serializers.ModelSerializer):
     class Meta:

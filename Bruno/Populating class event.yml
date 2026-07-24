@@ -1,0 +1,29 @@
+info:
+  name: Populating class event
+  type: http
+  seq: 39
+
+http:
+  method: POST
+  url: http://127.0.0.1:8000/api/class-events/
+  body:
+    type: json
+    data: |
+      {
+        "subject_id": 1,
+        "instructor_id": 1,
+        "cohort_id": 1,
+        "room_id": 1,
+        "event_data": {
+          "day": "MON",
+          "start_time": "10:00:00",
+          "end_time": "11:30:00"
+        }
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
