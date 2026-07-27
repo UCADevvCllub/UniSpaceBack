@@ -5,6 +5,7 @@ from camphub import views
 from rest_framework.routers import DefaultRouter
 from django.contrib import admin
 
+
 router = DefaultRouter()
 router.register(r'schedule-entries', views.EventViewSet)
 router.register(r'contacts', views.ContactViewSet)
@@ -19,6 +20,7 @@ router.register(r'subject-entries', views.SubjectViewSet)
 router.register(r'instructor-entries', views.InstructorViewSet)
 router.register(r'cohort-entries', views.CohortViewSet)
 router.register(r'room-entries', views.RoomViewSet)
+router.register(r'study-year-entries', views.StudyYearViewSet)
 
 urlpatterns = [
     path('admin/', admin.site.urls),

@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     Room, Cohort, StudyYear, Subject, Event, GymEvent, ClassEvent,
-    MealTime, Instructor, Contact, TVBooking, Reminder, BubbleEvent
+    MealTime, Instructor, Contact, TVBooking, TVLounge, Reminder, BubbleEvent
 )
 
 
@@ -85,12 +85,18 @@ class ContactAdmin(admin.ModelAdmin):
     search_fields = ('full_name', 'role', 'phone_number')
 
 
+@admin.register(TVLounge)
+class TVLoungeAdmin(admin.ModelAdmin):
+    list_display = ('name',)
+    search_fields = ('name',)
+
+
 @admin.register(TVBooking)
 class TVBookingAdmin(admin.ModelAdmin):
-    list_display = ('booker_name', 'lounge_name', 'event_id', 'user_id')
-    list_filter = ('lounge_name',)
-    search_fields = ('booker_name', 'lounge_name')
-    autocomplete_fields = ('event_id', 'user_id')
+    list_display = ('booker_name', 'lounge_id', 'event_id', 'user_id')
+    list_filter = ('lounge_id',)
+    search_fields = ('booker_name', 'lounge_id__name')
+    autocomplete_fields = ('event_id', 'user_id', 'lounge_id')
 
 
 @admin.register(Reminder)

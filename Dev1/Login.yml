@@ -1,0 +1,33 @@
+info:
+  name: Login
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: http://127.0.0.1:8000/auth/jwt/create/
+  body:
+    type: json
+    data: |-
+      {
+        "email": "test@gmail.com",
+        "password": "12344321"
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        const data = res.getBody();
+
+        if (data.access) {
+          bru.setEnvVar("token", data.access);
+          console.log("Success: JWT Token saved to environment variable 'token'!");
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

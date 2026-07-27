@@ -1,7 +1,7 @@
 from rest_framework import viewsets, permissions
 from django.db.models import Q
-from .serializers import EventSerializer, ContactSerializer, ScheduleSerializer, BubbleEventSerializer, GymEventSerializer, MealTimeSerializer, ClassEventSerializer, SubjectSerializer, InstructorSerializer, CohortSerializer, RoomSerializer
-from .models import Event, Contact, ClassEvent, BubbleEvent, GymEvent, MealTime, Subject, Instructor, Cohort, Room
+from .serializers import EventSerializer, ContactSerializer, ScheduleSerializer, BubbleEventSerializer, GymEventSerializer, MealTimeSerializer, ClassEventSerializer, SubjectSerializer, InstructorSerializer, CohortSerializer, RoomSerializer, StudyYearSerializer
+from .models import Event, Contact, ClassEvent, BubbleEvent, GymEvent, MealTime, Subject, Instructor, Cohort, Room, StudyYear
 
 
 class EventViewSet(viewsets.ModelViewSet):
@@ -72,7 +72,7 @@ class MealTimeViewSet(viewsets.ModelViewSet):
 
 
 class ClassEventViewSet(viewsets.ModelViewSet):
-    queryset = ClassEvent.objects.all()
+    queryset =ClassEvent.objects.all()
     serializer_class = ClassEventSerializer
 
 
@@ -104,4 +104,10 @@ class CohortViewSet(viewsets.ModelViewSet):
 class RoomViewSet(viewsets.ModelViewSet):
     queryset = Room.objects.all()
     serializer_class = RoomSerializer
+    permission_classes = [permissions.AllowAny]
+
+
+class StudyYearViewSet(viewsets.ModelViewSet):
+    queryset = StudyYear.objects.all()
+    serializer_class = StudyYearSerializer
     permission_classes = [permissions.AllowAny]

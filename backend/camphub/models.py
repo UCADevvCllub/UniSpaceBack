@@ -118,7 +118,7 @@ class ClassEvent(models.Model):
         Event, on_delete=models.CASCADE, null=True, blank=True, db_column='event_id')
     room_id = models.ForeignKey(
         Room, on_delete=models.CASCADE, null=True, blank=True, db_column='room_id')
-
+    
     def clean(self):
         super().clean()
 
@@ -138,24 +138,29 @@ class ClassEvent(models.Model):
         )
 
         # prevent self-collision
+        
         if self.pk:
             conflicts = conflicts.exclude(pk=self.pk)
+            
+        if self.cohort_id and self.cohort_id.study_year_id:
+                    current_study_year = self.cohort_id.study_year_id
+                    same_year_cohort_conflicts = conflicts.filter(
+                        cohort_id__study_year_id=current_study_year,
+                        cohort_id=self.cohort_id
+                    )
+                    if same_year_cohort_conflicts.exists():
+                        if self.room_id and conflicts.filter(room_id=self.room_id).exists():
+                            raise ValidationError(
+                                f"Conflict: Room {self.room_id} already has a {target_status} event during this time."
+                            )
 
-        if self.room_id and conflicts.filter(room_id=self.room_id).exists():
-            raise ValidationError(
-                f"Conflict: Room {self.room_id} already has a {target_status} event during this time."
-            )
+                        # Instructor Conflict
+                        if self.instructor_id and conflicts.filter(instructor_id=self.instructor_id).exists():
+                            raise ValidationError(
+                                f"Conflict: Instructor {self.instructor_id} is already busy with another {target_status} event."
+                            )
 
-        # Instructor Conflict
-        if self.instructor_id and conflicts.filter(instructor_id=self.instructor_id).exists():
-            raise ValidationError(
-                f"Conflict: Instructor {self.instructor_id} is already busy with another {target_status} event."
-            )
 
-        if self.cohort_id and conflicts.filter(cohort_id=self.cohort_id).exists():
-            raise ValidationError(
-                f"Conflict: Cohort {self.cohort_id} is already attending a {target_status} event."
-            )
 
 
 class MealTime(models.Model):
@@ -210,16 +215,26 @@ class Contact(models.Model):
         return self.full_name
 
 
+class TVLounge(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+
+    def __str__(self):
+        return self.name
+
+
 class TVBooking(models.Model):
     user_id = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True, db_column='user_id')
-    lounge_name = models.CharField(max_length=50)
+    lounge_id = models.ForeignKey(
+        TVLounge, on_delete=models.CASCADE, null=True, blank=True, db_column='lounge_id')
     booker_name = models.CharField(max_length=100)
     event_id = models.ForeignKey(
         Event, on_delete=models.CASCADE, null=True, blank=True, db_column='event_id')
+
     def __str__(self):
+        lounge_str = self.lounge_id.name if self.lounge_id else "No Lounge"
         event_str = f"{self.event_id.day} {self.event_id.start_time}" if self.event_id else "No Event"
-        return f"{self.booker_name} - {self.lounge_name} ({event_str})"
+        return f"{self.booker_name} - {lounge_str} ({event_str})"
 
 
 class Reminder(models.Model):

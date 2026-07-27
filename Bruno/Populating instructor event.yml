@@ -1,0 +1,23 @@
+info:
+  name: Populating instructor event
+  type: http
+  seq: 36
+
+http:
+  method: POST
+  url: http://127.0.0.1:8000/api/instructor-entries/
+  body:
+    type: json
+    data: |
+      {
+        "first_name": "Jane",
+        "last_name": "Smith",
+        "status": "ON_CAMPUS"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

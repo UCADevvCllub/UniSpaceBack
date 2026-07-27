@@ -1,0 +1,29 @@
+info:
+  name: Create Entry
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: http://127.0.0.1:8000/api/schedule-entries/
+  headers:
+    - name: Authorization
+      value: JWT eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzgwMzE4Nzg5LCJpYXQiOjE3ODAzMTUxODksImp0aSI6ImMwNjUzZTQyYWIzMzQ0OWY4YWFhYzQ1NjEyMzUyYTNiIiwidXNlcl9pZCI6IjEifQ.K4fk-D-3n8yvHx7g050f5Zck-bw-8GDNuV84qGy4fII
+  body:
+    type: json
+    data: |-
+      {
+        "day": "MON",
+        "start_time": "10:00:00",
+        "end_time": "11:30:00",
+        "activity": 1,
+        "rooms": [1],
+        "entry_type": "LESSON"
+      }  
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
