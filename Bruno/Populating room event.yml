@@ -5,7 +5,7 @@ info:
 
 http:
   method: POST
-  url: http://127.0.0.1:8000/api/room-entries/
+  url: "{{host}}/api/room-entries/"
   body:
     type: json
     data: |

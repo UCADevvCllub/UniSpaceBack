@@ -5,7 +5,7 @@ info:
 
 http:
   method: POST
-  url: http://localhost:8000/auth/users/
+  url: "{{host}}/auth/users/"
   headers:
     - name: Content-Type
       value: application/json
