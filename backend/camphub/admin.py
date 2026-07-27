@@ -27,10 +27,10 @@ class SubjectAdmin(admin.ModelAdmin):
 
 @admin.register(Cohort)
 class CohortAdmin(admin.ModelAdmin):
-    list_display = ('cohort_name', 'study_year_id', 'room_id')
+    list_display = ('cohort_name', 'study_year_id')
     list_filter = ('cohort_name', 'study_year_id')
     search_fields = ('cohort_name',)
-    autocomplete_fields = ('study_year_id', 'room_id')
+    autocomplete_fields = ('study_year_id',)
 
 
 @admin.register(Event)

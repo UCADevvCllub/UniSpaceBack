@@ -47,7 +47,6 @@ class Cohort(models.Model):
     study_year_id = models.ForeignKey(
         StudyYear, on_delete=models.CASCADE, null=True, blank=True, db_column='study_year_id')
     cohort_name = models.CharField(max_length=50, choices=CHOICES)
-    room_id = models.ForeignKey(Room, on_delete=models.CASCADE, null=True, blank=True, db_column='room_id')
 
     def __str__(self):
         return self.cohort_name
