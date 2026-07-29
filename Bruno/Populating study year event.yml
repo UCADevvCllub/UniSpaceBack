@@ -1,7 +1,7 @@
 info:
   name: Populating study year event
   type: http
-  seq: 45
+  seq: 29
 
 http:
   method: POST

@@ -1,7 +1,7 @@
 info:
   name: Getting all instructor names
   type: http
-  seq: 24
+  seq: 20
 
 http:
   method: GET

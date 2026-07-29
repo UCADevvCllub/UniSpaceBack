@@ -1,7 +1,7 @@
 info:
   name: Populating cohort event
   type: http
-  seq: 28
+  seq: 22
 
 http:
   method: POST

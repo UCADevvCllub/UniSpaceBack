@@ -219,7 +219,7 @@ class ClassEventSerializer(serializers.ModelSerializer):
         model = ClassEvent
         
         fields = [
-            'id', 'subject_id', 'instructor_id', 'cohort_id', 'room_id', 'event_data',
+            'id', 'subject_id', 'instructor_id', 'cohort_id', 'event_id',  'room_id', 'event_data',
             'subject_detail', 'instructor_detail', 'cohort_detail', 'room_detail', 'event_detail'
         ]
     def create(self, validated_data):

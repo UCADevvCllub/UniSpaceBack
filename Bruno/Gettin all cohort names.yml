@@ -1,7 +1,7 @@
 info:
   name: Gettin all cohort names
   type: http
-  seq: 26
+  seq: 21
 
 http:
   method: GET
