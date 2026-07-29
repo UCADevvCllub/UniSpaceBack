@@ -40,7 +40,15 @@ class Command(BaseCommand):
             logging.warning(f"Could not connect to Redis: {e}. Falling back to MemoryStorage.")
             storage = MemoryStorage()
 
-        TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+        # Use test bot token if USE_TEST_BOT is set to true
+        USE_TEST_BOT = os.getenv("USE_TEST_BOT", "False").lower() == "true"
+        if USE_TEST_BOT:
+            TOKEN = os.getenv("TEST_TELEGRAM_BOT_TOKEN")
+            logging.info("Using TEST bot token")
+        else:
+            TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+            logging.info("Using PRODUCTION bot token")
+        
         bot = Bot(token=TOKEN)
         dp = Dispatcher(storage=storage)
 

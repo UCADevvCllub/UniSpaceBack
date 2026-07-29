@@ -29,7 +29,8 @@ DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
 # ALLOWED_HOSTS = []
 if DEBUG:
-    ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+    ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver']
+
 else:
     # Put your group's production domain here later
     ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
@@ -114,6 +115,12 @@ else:
             'PORT': os.getenv('DB_PORT', '5432'),
         }
     }
+
+DATABASES['logs_db'] = {
+    'ENGINE': 'django.db.backends.sqlite3',
+    'NAME': BASE_DIR / 'logs.sqlite3',
+}
+
 
 # added for redis
 # Caching with Redis

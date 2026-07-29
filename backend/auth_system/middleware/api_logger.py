@@ -138,7 +138,26 @@ class APILoggerMiddleware:
             f"=========================="
         )
 
+        # 4. Save to separate Database ('logs_db') ONLY for target endpoints (e.g. TV Booking)
+        TARGET_DB_LOG_ENDPOINTS = ['/api/tv-bookings', '/api/tvbookings', '/tv-bookings']
+        if any(target in req_url for target in TARGET_DB_LOG_ENDPOINTS):
+            try:
+                from camphub.models import APILog
+                req_body_str = json.dumps(req_body) if isinstance(req_body, (dict, list)) else (str(req_body) if req_body else "")
+                resp_body_str = json.dumps(resp_body) if isinstance(resp_body, (dict, list)) else (str(resp_body) if resp_body else "")
+                APILog.objects.using('logs_db').create(
+                    endpoint=req_url,
+                    method=req_method,
+                    status_code=resp_status,
+                    request_body=req_body_str,
+                    response_body=resp_body_str,
+                    execution_time_ms=duration_ms
+                )
+            except Exception as e:
+                api_logger.error(f"[DB Log Error] Failed to save log to logs_db: {str(e)}")
+
         return response
+
 
     def _extract_headers(self, meta: Dict[str, Any]) -> Dict[str, str]:
         """Extract HTTP headers from request.META and mask authorization tokens."""
