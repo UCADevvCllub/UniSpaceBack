@@ -97,7 +97,7 @@ class BubbleEventSerializer(serializers.ModelSerializer):
                 {"error":"This time slot overlaps with an existing bubble event."}
             )
 
-        event = Event.objects.create(
+        event, created = Event.objects.get_or_create(
             day=day,
             start_time=start_time,
             end_time=end_time,
@@ -141,7 +141,7 @@ class MealTimeSerializer(serializers.ModelSerializer):
                 {"error":"This time slot overlaps with an existing meal time event."}
             )
 
-        event = Event.objects.create(
+        event, created = Event.objects.get_or_create(
             day=day,
             start_time=start_time,
             end_time=end_time,
@@ -187,7 +187,7 @@ class GymEventSerializer(serializers.ModelSerializer):
                 {"error":"This time slot overlaps with an existing gym event."}
             )
 
-        event = Event.objects.create(
+        event, created = Event.objects.get_or_create(
             day=day,
             start_time=start_time,
             end_time=end_time,
@@ -268,7 +268,7 @@ class ClassEventSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(
                         {"cohort_id": "This cohort already has a class scheduled at this time."})
 
-        new_event = Event.objects.create(
+        new_event, created = Event.objects.get_or_create(
             day=day,
             start_time=start_time,
             end_time=end_time,
