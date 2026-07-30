@@ -210,6 +210,22 @@ DJOSER = {
     }
 }
 
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://web-production-4fa53e.up.railway.app",  # Include your own URL too
+]
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
+# This is critical for cross-domain POST requests
+CSRF_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SECURE = True
+
 AUTH_USER_MODEL = 'accounts.UserAccount'
 
 STATICFILES_DIRS = []

@@ -215,6 +215,20 @@ class ClassEventSerializer(serializers.ModelSerializer):
 
     event_data = EventSerializer(write_only=True)
 
+    def update(self, instance, validated_data):
+        # 1. Extract the nested event_data
+        event_data = validated_data.pop('event_data', None)
+
+        # 2. If event_data exists, update the linked Event model
+        if event_data:
+            event_instance = instance.event_id  # This is the FK to the Event model
+            for attr, value in event_data.items():
+                setattr(event_instance, attr, value)
+            event_instance.save()
+
+        # 3. Update the rest of the ClassEvent fields (subject, room, etc.)
+        return super().update(instance, validated_data)
+    
     class Meta:
         model = ClassEvent
         
