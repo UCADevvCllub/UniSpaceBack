@@ -5,7 +5,7 @@ info:
 
 http:
   method: GET
-  url: http://127.0.0.1:8000/api/schedule/?course=cs
+  url: "{{host}}/api/schedule/?course=cs"
   params:
     - name: course
       value: cs

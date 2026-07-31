@@ -1,11 +1,11 @@
 info:
   name: Populating class event
   type: http
-  seq: 39
+  seq: 27
 
 http:
   method: POST
-  url: http://127.0.0.1:8000/api/class-events/
+  url: "{{host}}/api/class-events/"
   body:
     type: json
     data: |

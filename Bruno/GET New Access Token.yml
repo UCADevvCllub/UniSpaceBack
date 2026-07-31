@@ -5,7 +5,7 @@ info:
 
 http:
   method: POST
-  url: http://localhost:8000/auth/jwt/refresh/
+  url: "{{host}}/auth/jwt/refresh/"
   headers:
     - name: Content-Type
       value: application/json

@@ -5,7 +5,7 @@ info:
 
 http:
   method: GET
-  url: https://testbackuni0.pythonanywhere.com/api/bubble-events/
+  url: "{{host}}/api/bubble-events/"
   auth: inherit
 
 settings:
