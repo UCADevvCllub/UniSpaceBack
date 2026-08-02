@@ -138,14 +138,19 @@ class APILoggerMiddleware:
             f"=========================="
         )
 
-        # 4. Save to separate Database ('logs_db') ONLY for target endpoints (e.g. TV Booking)
-        TARGET_DB_LOG_ENDPOINTS = ['/api/tv-bookings', '/api/tvbookings', '/tv-bookings']
-        if any(target in req_url for target in TARGET_DB_LOG_ENDPOINTS):
+        # 4. Save to separate Database ('logs_db') for all endpoints EXCEPT static/media files (Blacklist Strategy)
+        EXCLUDED_LOG_ENDPOINTS = [
+            '/static/', '/media/', '/favicon.ico', '/admin/js/', '/admin/css/', '/admin/img/'
+        ]
+
+        if not any(excluded in req_url for excluded in EXCLUDED_LOG_ENDPOINTS):
             try:
-                from camphub.models import APILog
+                from camphub.models import APILog, APISQLLog
                 req_body_str = json.dumps(req_body) if isinstance(req_body, (dict, list)) else (str(req_body) if req_body else "")
                 resp_body_str = json.dumps(resp_body) if isinstance(resp_body, (dict, list)) else (str(resp_body) if resp_body else "")
-                APILog.objects.using('logs_db').create(
+                
+                # 4a. Create main HTTP APILog record
+                api_log_obj = APILog.objects.using('logs_db').create(
                     endpoint=req_url,
                     method=req_method,
                     status_code=resp_status,
@@ -153,8 +158,24 @@ class APILoggerMiddleware:
                     response_body=resp_body_str,
                     execution_time_ms=duration_ms
                 )
+
+                # 4b. Bulk create individual APISQLLog records in separate table
+                if db_queries:
+                    sql_log_objs = [
+                        APISQLLog(
+                            api_log=api_log_obj,
+                            sql=q.get("sql", ""),
+                            params=q.get("params", ""),
+                            duration_ms=q.get("duration_ms", 0.0)
+                        )
+                        for q in db_queries
+                    ]
+                    APISQLLog.objects.using('logs_db').bulk_create(sql_log_objs)
+
             except Exception as e:
                 api_logger.error(f"[DB Log Error] Failed to save log to logs_db: {str(e)}")
+
+
 
         return response
 
