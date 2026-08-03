@@ -39,12 +39,12 @@ async def my_tv_bookings(callback: CallbackQuery):
         await callback.message.edit_text("You have no TV Lounge bookings.")
         return
         
-    text = "📺 **Your TV Lounge Bookings:**\n\n"
+    text = "📺 Your TV Lounge Bookings:\n\n"
     for b in bookings:
         text += (
-            f"▪️ **{b.lounge_name}**\n"
+            f"▪️ {b.lounge_name}\n"
             f"   👤 Booker: {b.booker_name}\n"
-            f"   📅 Date: {b.booking_date}\n"
+            f"   📅 Booking Date: {b.booking_date}\n"
             f"   🕐 Time: {b.booking_time}\n\n"
         )
         
@@ -56,7 +56,7 @@ async def my_tv_bookings(callback: CallbackQuery):
 async def start_tv_booking(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.message.edit_text(
-        "📝 **Book TV Lounge**\n\nPlease select a TV Lounge to book:",
+        "📝 Book TV Lounge\n\nPlease select a TV Lounge to book:",
         reply_markup=get_tv_lounges_kb()
     )
     await state.set_state(BookTVState.waiting_for_lounge_selection)
@@ -65,24 +65,24 @@ async def start_tv_booking(callback: CallbackQuery, state: FSMContext):
 async def process_lounge_selection(callback: CallbackQuery, state: FSMContext):
     lounge = callback.data.split("_")[2]
     await state.update_data(lounge_name=lounge)
-    await callback.message.edit_text("👤 **Booker Name**\n\nPlease enter the booker's name:")
+    await callback.message.edit_text("👤 Booker Name\n\nPlease enter the booker's name:")
     await state.set_state(BookTVState.waiting_for_booker_name)
 
 @router.message(BookTVState.waiting_for_booker_name)
 async def process_booker_name(message: Message, state: FSMContext):
     await state.update_data(booker_name=message.text.strip())
     await message.answer(
-        "📅 **Booking Date**\n\n"
-        "Please enter the date (Format: DD.MM, e.g. 29.05):"
+        "📅 Date\n\n"
+        "Please enter the date (Format: DD/MM, e.g. 29/05):"
     )
     await state.set_state(BookTVState.waiting_for_booking_date)
 
 @router.message(BookTVState.waiting_for_booking_date)
 async def process_booking_date(message: Message, state: FSMContext):
     date_str = message.text.strip()
-    match = re.match(r"^(\d{2})\.(\d{2})(?:\.(\d{4}))?$", date_str)
+    match = re.match(r"^(\d{2})/(\d{2})(?:/(\d{4}))?$", date_str)
     if not match:
-        await message.answer("Invalid format. Please enter date in DD.MM format (e.g. 29.05):")
+        await message.answer("Invalid format. Please enter date in DD/MM format (e.g. 29/05):")
         return
         
     try:
@@ -91,12 +91,18 @@ async def process_booking_date(message: Message, state: FSMContext):
         year = int(match.group(3)) if match.group(3) else datetime.now().year
         parsed_date = datetime(year, month, day)
     except ValueError:
-        await message.answer("That is not a valid calendar date. Please enter a valid date (DD.MM):")
+        await message.answer("That is not a valid calendar date. Please enter a valid date (DD/MM):")
         return
         
+    # Check if date is in the past (comparing date part only)
+    now = datetime.now()
+    if parsed_date.date() < now.date():
+        await message.answer("❌ Past dates are not allowed. Please enter a valid date (DD/MM):")
+        return
+
     await state.update_data(booking_date_obj=parsed_date.strftime("%Y-%m-%d"), booking_date_str=date_str)
     await message.answer(
-        "🕐 **Booking Time**\n\n"
+        "🕐 Time\n\n"
         "Please enter the start time (Format: HH:MM, e.g. 18:00):"
     )
     await state.set_state(BookTVState.waiting_for_booking_time)
@@ -122,17 +128,16 @@ async def process_booking_time(message: Message, state: FSMContext):
             datetime.strptime(time_str, "%H:%M").time()
         )
     except Exception:
-        await message.answer("An error occurred during verification. Please re-enter the date (DD.MM):")
+        await message.answer("An error occurred during verification. Please re-enter the date (DD/MM):")
         await state.set_state(BookTVState.waiting_for_booking_date)
         return
         
     if booking_dt < now:
         await message.answer(
-            "❌ **Past Dates / Times Not Allowed!**\n\n"
+            "❌ Past Date / Time Not Allowed!\n\n"
             f"The date & time you entered ({date_str} at {time_str}) is in the past.\n"
-            "Please enter a valid future date (DD.MM):"
+            "Please enter a valid future time (HH:MM) or restart date (DD/MM):"
         )
-        await state.set_state(BookTVState.waiting_for_booking_date)
         return
 
     booking_id = data.get("edit_booking_id")
@@ -153,11 +158,11 @@ async def process_booking_time(message: Message, state: FSMContext):
             # Add new automatic reminder 15 minutes before
             await add_reminder(message.from_user.id, "tv", lounge_name, date_str, time_str, 15)
             await message.answer(
-                f"✅ **Booking Updated Successfully!**\n\n"
-                f"🏛️ **Lounge:** Lounge {lounge_name}\n"
-                f"👤 **Booker:** {booker_name}\n"
-                f"📅 **Date:** {date_str}\n"
-                f"🕐 **Time:** {time_str}\n\n"
+                f"✅ Booking Updated Successfully!\n\n"
+                f"🏛️ Lounge: Lounge {lounge_name}\n"
+                f"👤 Booker: {booker_name}\n"
+                f"📅 Date: {date_str}\n"
+                f"🕐 Time: {time_str}\n\n"
                 f"🔔 A reminder has been set for 15 minutes before."
             )
         else:
@@ -170,11 +175,11 @@ async def process_booking_time(message: Message, state: FSMContext):
         await add_reminder(message.from_user.id, "tv", lounge_name, date_str, time_str, 15)
         
         await message.answer(
-            f"✅ **Booking Confirmed!**\n\n"
-            f"🏛️ **Lounge:** Lounge {lounge_name}\n"
-            f"👤 **Booker:** {booker_name}\n"
-            f"📅 **Date:** {date_str}\n"
-            f"🕐 **Time:** {time_str}\n\n"
+            f"✅ Booking Confirmed!\n\n"
+            f"🏛️ Lounge: Lounge {lounge_name}\n"
+            f"👤 Booker: {booker_name}\n"
+            f"📅 Date: {date_str}\n"
+            f"🕐 Time: {time_str}\n\n"
             f"🔔 A reminder has been set for 15 minutes before."
         )
             
@@ -201,7 +206,7 @@ async def start_tv_edit(callback: CallbackQuery, state: FSMContext):
     builder.adjust(1)
     
     await callback.message.edit_text(
-        "✏️ **Edit Booking**\n\nPlease select which booking you want to edit:",
+        "✏️ Edit Booking\n\nPlease select which booking you want to edit:",
         reply_markup=builder.as_markup()
     )
 
@@ -221,11 +226,11 @@ async def process_tv_edit_selection(callback: CallbackQuery, state: FSMContext):
     builder.adjust(1)
     
     text = (
-        f"📋 **Manage Booking:**\n\n"
-        f"🏛️ **Lounge:** Lounge {booking.lounge_name}\n"
-        f"👤 **Booker:** {booking.booker_name}\n"
-        f"📅 **Date:** {booking.booking_date}\n"
-        f"🕐 **Time:** {booking.booking_time}\n\n"
+        f"📋 Manage Booking:\n\n"
+        f"🏛️ Lounge: Lounge {booking.lounge_name}\n"
+        f"👤 Booker: {booking.booker_name}\n"
+        f"📅 Date: {booking.booking_date}\n"
+        f"🕐 Time: {booking.booking_time}\n\n"
         f"What would you like to do?"
     )
     await callback.message.edit_text(text, reply_markup=builder.as_markup())
@@ -236,7 +241,7 @@ async def process_tv_edit_details(callback: CallbackQuery, state: FSMContext):
     await state.update_data(edit_booking_id=booking_id)
     
     await callback.message.edit_text(
-        "✏️ **Editing Booking**\n\nPlease select the new TV Lounge:",
+        "✏️ Editing Booking\n\nPlease select the new TV Lounge:",
         reply_markup=get_tv_lounges_kb()
     )
     await state.set_state(BookTVState.waiting_for_lounge_selection)
@@ -255,11 +260,12 @@ async def process_tv_delete(callback: CallbackQuery):
         # Delete booking
         await delete_tv_booking(booking_id)
         await callback.message.edit_text(
-            "✅ **Booking Deleted Successfully!**",
+            "✅ Booking Deleted Successfully!",
             reply_markup=get_tv_submenu_kb()
         )
     else:
         await callback.message.edit_text(
-            "❌ **Error:** Booking could not be found.",
+            "❌ Error: Booking could not be found.",
             reply_markup=get_tv_submenu_kb()
         )
+
