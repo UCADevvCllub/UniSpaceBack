@@ -5,14 +5,16 @@ from .bot.crud import day_mapping
 from .models import Event, Contact, ClassEvent, StudyYear, GymEvent, MealTime, BubbleEvent, Subject, Instructor, Cohort, Room, TVLounge, TVBooking
 
 
-
-
-
 class SubjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subject
         fields = '__all__'
-    
+
+
+class StudyYearSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StudyYear
+        fields = '__all__'
 
 class InstructorSerializer(serializers.ModelSerializer):
     class Meta:
@@ -126,7 +128,7 @@ class BubbleEventSerializer(serializers.ModelSerializer):
                 {"error":"This time slot overlaps with an existing bubble event."}
             )
 
-        event = Event.objects.create(
+        event, created = Event.objects.get_or_create(
             day=day,
             start_time=start_time,
             end_time=end_time,
@@ -170,7 +172,7 @@ class MealTimeSerializer(serializers.ModelSerializer):
                 {"error":"This time slot overlaps with an existing meal time event."}
             )
 
-        event = Event.objects.create(
+        event, created = Event.objects.get_or_create(
             day=day,
             start_time=start_time,
             end_time=end_time,
@@ -216,7 +218,7 @@ class GymEventSerializer(serializers.ModelSerializer):
                 {"error":"This time slot overlaps with an existing gym event."}
             )
 
-        event = Event.objects.create(
+        event, created = Event.objects.get_or_create(
             day=day,
             start_time=start_time,
             end_time=end_time,
@@ -244,11 +246,25 @@ class ClassEventSerializer(serializers.ModelSerializer):
 
     event_data = EventSerializer(write_only=True)
 
+    def update(self, instance, validated_data):
+        # 1. Extract the nested event_data
+        event_data = validated_data.pop('event_data', None)
+
+        # 2. If event_data exists, update the linked Event model
+        if event_data:
+            event_instance = instance.event_id  # This is the FK to the Event model
+            for attr, value in event_data.items():
+                setattr(event_instance, attr, value)
+            event_instance.save()
+
+        # 3. Update the rest of the ClassEvent fields (subject, room, etc.)
+        return super().update(instance, validated_data)
+    
     class Meta:
         model = ClassEvent
         
         fields = [
-            'id', 'subject_id', 'instructor_id', 'cohort_id', 'room_id', 'event_data',
+            'id', 'subject_id', 'instructor_id', 'cohort_id', 'event_id',  'room_id', 'event_data',
             'subject_detail', 'instructor_detail', 'cohort_detail', 'room_detail', 'event_detail'
         ]
     def create(self, validated_data):
@@ -297,7 +313,7 @@ class ClassEventSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(
                         {"cohort_id": "This cohort already has a class scheduled at this time."})
 
-        new_event = Event.objects.create(
+        new_event, created = Event.objects.get_or_create(
             day=day,
             start_time=start_time,
             end_time=end_time,

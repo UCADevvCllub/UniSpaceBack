@@ -43,7 +43,7 @@ class Cohort(models.Model):
 
     study_year_id = models.ForeignKey(StudyYear, on_delete=models.CASCADE, null=True, blank=True, db_column='study_year_id')
     cohort_name = models.CharField(max_length=50)
-    room_id = models.ForeignKey(Room, on_delete=models.CASCADE, null=True, blank=True, db_column='room_id')
+
 
     def __str__(self):
         return self.cohort_name
@@ -82,6 +82,32 @@ class GymEvent(models.Model):
         max_length=50, choices=CHOICES, default='MALE')
     event_id = models.ForeignKey(
         Event, on_delete=models.CASCADE, null=True, blank=True, db_column='event_id')
+    def clean(self):
+                    super().clean()
+            
+                    if not self.event_id:
+                        return
+        
+                    target_status = self.event_id.status
+                    target_day = self.event_id.day
+                    target_start = self.event_id.start_time
+                    target_end = self.event_id.end_time
+                    
+                    conflicts = GymEvent.objects.filter(
+                        event_id__status=target_status,  # same type
+                        event_id__day=target_day,
+                        event_id__start_time__lt=target_end,
+                        event_id__end_time__gt=target_start
+                    )
+        
+                    if self.pk:
+                                conflicts = conflicts.exclude(pk=self.pk)
+                    if conflicts.exists():
+                        raise ValidationError(
+                            f"Conflict: The Timeslote at that day is occupied"
+                        )
+
+    
 
 
 class Instructor(models.Model):
@@ -111,7 +137,7 @@ class ClassEvent(models.Model):
         Event, on_delete=models.CASCADE, null=True, blank=True, db_column='event_id')
     room_id = models.ForeignKey(
         Room, on_delete=models.CASCADE, null=True, blank=True, db_column='room_id')
-
+    
     def clean(self):
         super().clean()
 
@@ -131,36 +157,109 @@ class ClassEvent(models.Model):
         )
 
         # prevent self-collision
+        
         if self.pk:
             conflicts = conflicts.exclude(pk=self.pk)
+            
+        if self.cohort_id and self.cohort_id.study_year_id:
+                    current_study_year = self.cohort_id.study_year_id
+                    same_year_cohort_conflicts = conflicts.filter(
+                        cohort_id__study_year_id=current_study_year,
+                        cohort_id=self.cohort_id
+                    )
+                    if same_year_cohort_conflicts.exists():
+                        if self.room_id and conflicts.filter(room_id=self.room_id).exists():
+                            raise ValidationError(
+                                f"Conflict: Room {self.room_id} already has a {target_status} event during this time."
+                            )
 
-        if self.room_id and conflicts.filter(room_id=self.room_id).exists():
-            raise ValidationError(
-                f"Conflict: Room {self.room_id} already has a {target_status} event during this time."
-            )
+                        # Instructor Conflict
+                        if self.instructor_id and conflicts.filter(instructor_id=self.instructor_id).exists():
+                            raise ValidationError(
+                                f"Conflict: Instructor {self.instructor_id} is already busy with another {target_status} event."
+                            )
+                        if conflicts.exists():
+                            raise ValidationError(
+                                f"Conflict: The Timeslote at that day is occupied"
+                            )
 
-        # Instructor Conflict
-        if self.instructor_id and conflicts.filter(instructor_id=self.instructor_id).exists():
-            raise ValidationError(
-                f"Conflict: Instructor {self.instructor_id} is already busy with another {target_status} event."
-            )
 
-        if self.cohort_id and conflicts.filter(cohort_id=self.cohort_id).exists():
-            raise ValidationError(
-                f"Conflict: Cohort {self.cohort_id} is already attending a {target_status} event."
-            )
 
 
 class MealTime(models.Model):
     meal_name = models.CharField(max_length=50)
     event_id = models.ForeignKey(
         Event, on_delete=models.CASCADE, null=True, blank=True, db_column='event_id')
+    def clean(self):
+                super().clean()
+        
+                if not self.event_id:
+                    return
+    
+                target_status = self.event_id.status
+                target_day = self.event_id.day
+                target_start = self.event_id.start_time
+                target_end = self.event_id.end_time
+                
+                conflicts = MealTime.objects.filter(
+                    event_id__status=target_status,  # same type
+                    event_id__day=target_day,
+                    event_id__start_time__lt=target_end,
+                    event_id__end_time__gt=target_start
+                )
+    
+                if self.pk:
+                            conflicts = conflicts.exclude(pk=self.pk)
+                if conflicts.exists():
+                    raise ValidationError(
+                        f"Conflict: The Timeslote at that day is occupied"
+                    )
 
 
 class BubbleEvent(models.Model):
-    name = models.CharField(max_length=100)
+    CHOICES = [
+        ('CLEANING', 'CLEANING & DISINFECTION'),
+        ('MCHS', 'MCHS'),
+        ('ALTAI-NARYN FOOTBALL', 'ALTAI-NARYN FOOTBALL SCHOOL'),
+        ('PE', 'PHYSICAL EDUCATION'),
+        ('SECURITY', 'UCA SECURITY'),
+        ('VOLLEYBALL', 'VOLLEYBALL'),
+        ('BASKETBALL', 'BASKETBALL'),
+        ('CRICKET', 'CRICKET'),
+        ('JUDO GRAPPLING', 'JUDO GRAPPLING'),
+        ('MEP&KITCHEN', 'MEP&KITCHEN'),
+        ('TENNIS', 'TENNIS'),
+
+    
+        ]
+    name = models.CharField(max_length=100, choices=CHOICES, default='CLEANING')
     event_id = models.ForeignKey(
         Event, on_delete=models.CASCADE, null=True, blank=True, db_column='event_id')
+
+    def clean(self):
+            super().clean()
+    
+            if not self.event_id:
+                return
+
+            target_status = self.event_id.status
+            target_day = self.event_id.day
+            target_start = self.event_id.start_time
+            target_end = self.event_id.end_time
+            
+            conflicts = BubbleEvent.objects.filter(
+                event_id__status=target_status,  # same type
+                event_id__day=target_day,
+                event_id__start_time__lt=target_end,
+                event_id__end_time__gt=target_start
+            )
+
+            if self.pk:
+                        conflicts = conflicts.exclude(pk=self.pk)
+            if conflicts.exists():
+                raise ValidationError(
+                    f"Conflict: The Timeslote at that day is occupied"
+                )
 
 
 

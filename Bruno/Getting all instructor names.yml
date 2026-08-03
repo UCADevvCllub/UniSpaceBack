@@ -1,11 +1,11 @@
 info:
-  name: Getting all meal time events
+  name: Getting all instructor names
   type: http
-  seq: 11
+  seq: 20
 
 http:
   method: GET
-  url: "{{host}}/api/meal-times/"
+  url: "{{host}}/api/instructor-entries/"
   auth: inherit
 
 settings:

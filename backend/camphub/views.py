@@ -3,7 +3,6 @@ from django.db.models import Q
 from .serializers import EventSerializer, ContactSerializer, ScheduleSerializer, BubbleEventSerializer, GymEventSerializer, MealTimeSerializer, ClassEventSerializer, SubjectSerializer, InstructorSerializer, CohortSerializer, RoomSerializer, StudyYearSerializer, TVLoungeSerializer, TVBookingSerializer
 from .models import Event, Contact, ClassEvent, BubbleEvent, GymEvent, MealTime, Subject, Instructor, Cohort, Room, StudyYear, TVLounge, TVBooking
 
-
 class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.all()
     serializer_class = EventSerializer
@@ -72,7 +71,7 @@ class MealTimeViewSet(viewsets.ModelViewSet):
 
 
 class ClassEventViewSet(viewsets.ModelViewSet):
-    queryset = ClassEvent.objects.all()
+    queryset =ClassEvent.objects.all()
     serializer_class = ClassEventSerializer
 
 

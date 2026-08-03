@@ -1,11 +1,11 @@
 info:
-  name: Getting all meal time events
+  name: Gettin all cohort names
   type: http
-  seq: 11
+  seq: 21
 
 http:
   method: GET
-  url: "{{host}}/api/meal-times/"
+  url: "{{host}}/api/cohort-entries/"
   auth: inherit
 
 settings:

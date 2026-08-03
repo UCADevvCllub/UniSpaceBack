@@ -1,0 +1,23 @@
+info:
+  name: Populating cohort event
+  type: http
+  seq: 22
+
+http:
+  method: POST
+  url: "{{host}}/api/cohort-entries/"
+  body:
+    type: json
+    data: |
+      {
+        "cohort_name": "CS",
+        "study_year_id": 1, 
+        "room_id": 1
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
