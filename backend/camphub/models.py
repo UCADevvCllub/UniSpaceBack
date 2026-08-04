@@ -325,3 +325,41 @@ class Reminder(models.Model):
     def __str__(self):
         event_str = f" ({self.event_id.day} {self.event_id.start_time})" if self.event_id else ""
         return f"Reminder {self.id} for {self.user_id}{event_str}"
+
+
+class APILog(models.Model):
+    endpoint = models.CharField(max_length=255)
+    method = models.CharField(max_length=10)
+    status_code = models.IntegerField()
+    request_body = models.TextField(null=True, blank=True)
+    response_body = models.TextField(null=True, blank=True)
+    execution_time_ms = models.FloatField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'api_logs'
+        verbose_name = 'API Log'
+        verbose_name_plural = 'API Logs'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"[{self.created_at.strftime('%Y-%m-%d %H:%M:%S')}] {self.method} {self.endpoint} ({self.status_code})"
+
+
+class APISQLLog(models.Model):
+    api_log = models.ForeignKey(APILog, on_delete=models.CASCADE, related_name='sql_queries', db_column='api_log_id')
+    sql = models.TextField()
+    params = models.TextField(null=True, blank=True)
+    duration_ms = models.FloatField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'api_sql_logs'
+        verbose_name = 'API SQL Log'
+        verbose_name_plural = 'API SQL Logs'
+        ordering = ['id']
+
+    def __str__(self):
+        return f"[{self.duration_ms}ms] {self.sql[:50]}..."
+
+
