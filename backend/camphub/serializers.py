@@ -381,16 +381,19 @@ class ClassEventSerializer(serializers.ModelSerializer):
         )
         
         if overlapping_events.exists():
+            
+            
             if instructor:
-
-                instructor_busy = ClassEvent.objects.filter(
+                conflict = ClassEvent.objects.filter(
                     event_id__in=overlapping_events,
                     instructor_id=instructor
-                ).exists()
+                ).select_related('event_id').first()
 
-                if instructor_busy:
-                    raise serializers.ValidationError(
-                        {"instructor_id": "This instructor is already busy at this time."})
+                if conflict:
+                    raise serializers.ValidationError({
+                        "instructor_id": f"Instructor already busy: existing class #{conflict.id} "
+                        f"on {conflict.event_id.day} {conflict.event_id.start_time}-{conflict.event_id.end_time}"
+                    })
             if room:
                 room_busy = ClassEvent.objects.filter(
                     event_id__in=overlapping_events,
