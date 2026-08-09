@@ -94,6 +94,7 @@ class GymEvent(models.Model):
                     target_end = self.event_id.end_time
                     
                     conflicts = GymEvent.objects.filter(
+                        gender=self.gender,
                         event_id__status=target_status,  # same type
                         event_id__day=target_day,
                         event_id__start_time__lt=target_end,
@@ -221,6 +222,8 @@ class BubbleEvent(models.Model):
         ('CLEANING', 'CLEANING & DISINFECTION'),
         ('MCHS', 'MCHS'),
         ('ALTAI-NARYN FOOTBALL', 'ALTAI-NARYN FOOTBALL SCHOOL'),
+        ('FOOTBALL', 'FOOTBALL'),
+        ('football', 'football'),
         ('PE', 'PHYSICAL EDUCATION'),
         ('SECURITY', 'UCA SECURITY'),
         ('VOLLEYBALL', 'VOLLEYBALL'),

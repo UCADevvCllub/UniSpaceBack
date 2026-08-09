@@ -102,19 +102,26 @@ class ScheduleSerializer(serializers.ModelSerializer):
 
 class BubbleEventSerializer(serializers.ModelSerializer):
     event = EventSerializer(source='event_id', read_only=True)
-
-    event_data = EventSerializer(write_only=True)
+    event_data = EventSerializer(write_only=True, required=False)
 
     class Meta:
         model = BubbleEvent
         fields = ['id', 'name', 'event', 'event_data']
 
+    def validate_name(self, value):
+        if not value:
+            return value
+        valid_map = {c[0].upper(): c[0] for c in BubbleEvent.CHOICES}
+        if value.upper() in valid_map:
+            return valid_map[value.upper()]
+        return value
+
     def create(self, validated_data):
         event_data = validated_data.pop('event_data')
 
-        day=event_data['day']
-        start_time=event_data['start_time']
-        end_time=event_data['end_time']
+        day = event_data['day']
+        start_time = event_data['start_time']
+        end_time = event_data['end_time']
 
         overlapping = Event.objects.filter(
             day=day,
@@ -125,7 +132,7 @@ class BubbleEventSerializer(serializers.ModelSerializer):
 
         if overlapping.exists():
             raise serializers.ValidationError(
-                {"error":"This time slot overlaps with an existing bubble event."}
+                {"error": "This time slot overlaps with an existing bubble event."}
             )
 
         event, created = Event.objects.get_or_create(
@@ -144,10 +151,39 @@ class BubbleEventSerializer(serializers.ModelSerializer):
             **validated_data
         )
 
+    def update(self, instance, validated_data):
+        event_data = validated_data.pop('event_data', None)
+        if event_data:
+            day = event_data.get('day', instance.event_id.day if instance.event_id else 'MON')
+            start_time = event_data.get('start_time', instance.event_id.start_time if instance.event_id else None)
+            end_time = event_data.get('end_time', instance.event_id.end_time if instance.event_id else None)
+
+            overlapping = Event.objects.filter(
+                day=day,
+                status='BUBBLE',
+                start_time__lt=end_time,
+                end_time__gt=start_time
+            )
+            if instance.event_id:
+                overlapping = overlapping.exclude(pk=instance.event_id.pk)
+
+            if overlapping.exists():
+                raise serializers.ValidationError(
+                    {"error": "This time slot overlaps with an existing bubble event."}
+                )
+
+            if instance.event_id:
+                instance.event_id.day = day
+                instance.event_id.start_time = start_time
+                instance.event_id.end_time = end_time
+                instance.event_id.save()
+
+        return super().update(instance, validated_data)
+
+
 class MealTimeSerializer(serializers.ModelSerializer):
     event = EventSerializer(source='event_id', read_only=True)
-
-    event_data = EventSerializer(write_only=True)
+    event_data = EventSerializer(write_only=True, required=False)
 
     class Meta:
         model = MealTime
@@ -156,12 +192,12 @@ class MealTimeSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         event_data = validated_data.pop('event_data')
 
-        day=event_data['day']
-        start_time=event_data['start_time']
-        end_time=event_data['end_time']
+        day = event_data['day']
+        start_time = event_data['start_time']
+        end_time = event_data['end_time']
 
         overlapping = Event.objects.filter(
-           day=day,
+            day=day,
             status='MEAL_TIME',
             start_time__lt=end_time,
             end_time__gt=start_time
@@ -169,7 +205,7 @@ class MealTimeSerializer(serializers.ModelSerializer):
 
         if overlapping.exists():
             raise serializers.ValidationError(
-                {"error":"This time slot overlaps with an existing meal time event."}
+                {"error": "This time slot overlaps with an existing meal time event."}
             )
 
         event, created = Event.objects.get_or_create(
@@ -189,10 +225,39 @@ class MealTimeSerializer(serializers.ModelSerializer):
             **validated_data
         )
 
+    def update(self, instance, validated_data):
+        event_data = validated_data.pop('event_data', None)
+        if event_data:
+            day = event_data.get('day', instance.event_id.day if instance.event_id else 'MON')
+            start_time = event_data.get('start_time', instance.event_id.start_time if instance.event_id else None)
+            end_time = event_data.get('end_time', instance.event_id.end_time if instance.event_id else None)
+
+            overlapping = Event.objects.filter(
+                day=day,
+                status='MEAL_TIME',
+                start_time__lt=end_time,
+                end_time__gt=start_time
+            )
+            if instance.event_id:
+                overlapping = overlapping.exclude(pk=instance.event_id.pk)
+
+            if overlapping.exists():
+                raise serializers.ValidationError(
+                    {"error": "This time slot overlaps with an existing meal time event."}
+                )
+
+            if instance.event_id:
+                instance.event_id.day = day
+                instance.event_id.start_time = start_time
+                instance.event_id.end_time = end_time
+                instance.event_id.save()
+
+        return super().update(instance, validated_data)
+
+
 class GymEventSerializer(serializers.ModelSerializer):
     event = EventSerializer(source='event_id', read_only=True)
-
-    event_data = EventSerializer(write_only=True)
+    event_data = EventSerializer(write_only=True, required=False)
 
     class Meta:
         model = GymEvent
@@ -200,22 +265,23 @@ class GymEventSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         event_data = validated_data.pop('event_data')
+        gender = validated_data.get('gender', 'MALE')
 
+        day = event_data['day']
+        start_time = event_data['start_time']
+        end_time = event_data['end_time']
 
-        day=event_data['day']
-        start_time=event_data['start_time']
-        end_time=event_data['end_time']
-
-        overlapping = Event.objects.filter(
-            day=day,
-            status='GYM',
-            start_time__lt=end_time,
-            end_time__gt=start_time
+        overlapping = GymEvent.objects.filter(
+            gender=gender,
+            event_id__day=day,
+            event_id__status='GYM',
+            event_id__start_time__lt=end_time,
+            event_id__end_time__gt=start_time
         )
 
         if overlapping.exists():
             raise serializers.ValidationError(
-                {"error":"This time slot overlaps with an existing gym event."}
+                {"error": "This time slot overlaps with an existing gym event."}
             )
 
         event, created = Event.objects.get_or_create(
@@ -225,7 +291,7 @@ class GymEventSerializer(serializers.ModelSerializer):
             status='GYM'
         )
 
-        if GymEvent.objects.filter(event_id=event).exists():
+        if GymEvent.objects.filter(event_id=event, gender=gender).exists():
             raise serializers.ValidationError(
                 {"error": "This slot is already booked."}
             )
@@ -234,6 +300,36 @@ class GymEventSerializer(serializers.ModelSerializer):
             event_id=event,
             **validated_data
         )
+
+    def update(self, instance, validated_data):
+        event_data = validated_data.pop('event_data', None)
+        gender = validated_data.get('gender', instance.gender)
+
+        if event_data:
+            day = event_data.get('day', instance.event_id.day if instance.event_id else 'MON')
+            start_time = event_data.get('start_time', instance.event_id.start_time if instance.event_id else None)
+            end_time = event_data.get('end_time', instance.event_id.end_time if instance.event_id else None)
+
+            overlapping = GymEvent.objects.filter(
+                gender=gender,
+                event_id__day=day,
+                event_id__status='GYM',
+                event_id__start_time__lt=end_time,
+                event_id__end_time__gt=start_time
+            ).exclude(pk=instance.pk)
+
+            if overlapping.exists():
+                raise serializers.ValidationError(
+                    {"error": "This time slot overlaps with an existing gym event."}
+                )
+
+            if instance.event_id:
+                instance.event_id.day = day
+                instance.event_id.start_time = start_time
+                instance.event_id.end_time = end_time
+                instance.event_id.save()
+
+        return super().update(instance, validated_data)
 
 
 class ClassEventSerializer(serializers.ModelSerializer):
