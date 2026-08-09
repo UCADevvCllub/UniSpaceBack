@@ -22,11 +22,7 @@ class Migration(migrations.Migration):
             model_name='tvbooking',
             name='lounge_name',
         ),
-        migrations.AddField(
-            model_name='cohort',
-            name='room_id',
-            field=models.ForeignKey(blank=True, db_column='room_id', null=True, on_delete=django.db.models.deletion.CASCADE, to='camphub.room'),
-        ),
+
         migrations.AlterField(
             model_name='cohort',
             name='cohort_name',

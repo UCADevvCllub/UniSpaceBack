@@ -10,10 +10,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name='cohort',
-            name='room_id',
-        ),
+
         migrations.AlterField(
             model_name='bubbleevent',
             name='name',
