@@ -26,6 +26,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Load the environment variables from the root .env file
 load_dotenv(BASE_DIR / '.env')
+load_dotenv(BASE_DIR.parent / '.env')
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY') or os.getenv('SECRET_KEY')
@@ -36,7 +37,7 @@ DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
 # ALLOWED_HOSTS = []
 if DEBUG:
-    ALLOWED_HOSTS = ['127.0.0.1', 'localhost','https://web-production-4fa53e.up.railway.app']
+    ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver', 'https://web-production-4fa53e.up.railway.app']
 else:
     # Put your group's production domain here later
     ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
@@ -139,6 +140,7 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'auth_system.middleware.api_logger.APILoggerMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -192,6 +194,16 @@ else:
             ssl_require=True,
         )
     }
+
+DATABASES['logs_db'] = {
+    'ENGINE': 'django.db.backends.sqlite3',
+    'NAME': BASE_DIR / 'logs.sqlite3',
+}
+
+# Without this, APILog/APISQLLog would migrate into the default (Postgres)
+# database instead of logs_db, since LogsRouter is otherwise never consulted.
+DATABASE_ROUTERS = ['auth_system.db_router.LogsRouter']
+
 
 # added for redis
 # Caching with Redis
@@ -324,22 +336,43 @@ if os.path.exists(_build_static):
 # (mail_admins is the only DEBUG=False handler, and ADMINS is empty) -- without
 # this, unhandled exceptions vanish silently in production.
 LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "handlers": {
-        "console": {
-            "class": "logging.StreamHandler",
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{asctime}] {levelname} [{name}] {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
         },
     },
-    "loggers": {
-        "django": {
-            "handlers": ["console"],
-            "level": "INFO",
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
         },
-        "django.request": {
-            "handlers": ["console"],
-            "level": "ERROR",
-            "propagate": False,
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+        },
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'api_logger': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'db_logger': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
         },
     },
 }

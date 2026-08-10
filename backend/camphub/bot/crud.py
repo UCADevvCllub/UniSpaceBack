@@ -68,7 +68,7 @@ class TVBookingWrapper:
         self.user_id = entry.user_id.telegram_id if entry.user_id else None
         self.lounge_name = entry.lounge_id.name if entry.lounge_id else "Unknown Lounge"
         self.booker_name = entry.booker_name
-        self.booking_date = entry.event_id.date.strftime("%d.%m") if (entry.event_id and entry.event_id.date) else ""
+        self.booking_date = entry.event_id.date.strftime("%d/%m") if (entry.event_id and entry.event_id.date) else ""
         self.booking_time = entry.event_id.start_time.strftime("%H:%M") if (entry.event_id and entry.event_id.start_time) else ""
 
 
@@ -99,7 +99,7 @@ class ReminderWrapper:
                 
             # 2. Resolve day name (or date for TV lounge bookings)
             if event.status == 'TV' and event.date:
-                self.day = event.date.strftime("%d.%m")
+                self.day = event.date.strftime("%d/%m")
             else:
                 self.day = day_reverse.get(event.day, event.day)
                 
@@ -388,7 +388,10 @@ def add_tv_booking(user_id: int, lounge_name: str, booker_name: str, booking_dat
     u = UserAccount.objects.get(telegram_id=user_id)
     lounge, _ = TVLounge.objects.get_or_create(name=lounge_name)
     try:
-        parsed_date = datetime.strptime(booking_date, "%d.%m").date().replace(year=datetime.now().year)
+        try:
+            parsed_date = datetime.strptime(booking_date, "%d/%m").date().replace(year=datetime.now().year)
+        except ValueError:
+            parsed_date = datetime.strptime(booking_date, "%d.%m").date().replace(year=datetime.now().year)
         day_of_week = parsed_date.strftime("%a").upper()
     except ValueError:
         parsed_date = None
@@ -425,7 +428,10 @@ def update_tv_booking(booking_id: int, lounge_name: str, booker_name: str, booki
         b.booker_name = booker_name
         
         try:
-            parsed_date = datetime.strptime(booking_date, "%d.%m").date().replace(year=datetime.now().year)
+            try:
+                parsed_date = datetime.strptime(booking_date, "%d/%m").date().replace(year=datetime.now().year)
+            except ValueError:
+                parsed_date = datetime.strptime(booking_date, "%d.%m").date().replace(year=datetime.now().year)
             day_of_week = parsed_date.strftime("%a").upper()
         except ValueError:
             parsed_date = None
@@ -507,7 +513,10 @@ def add_reminder(user_id: int, r_type: str, subject: str, day: str, time_str: st
     event = None
     if r_type == "tv":
         try:
-            parsed_date = datetime.strptime(day, "%d.%m").date().replace(year=datetime.now().year)
+            try:
+                parsed_date = datetime.strptime(day, "%d/%m").date().replace(year=datetime.now().year)
+            except ValueError:
+                parsed_date = datetime.strptime(day, "%d.%m").date().replace(year=datetime.now().year)
             event = Event.objects.filter(status="TV", start_time=start_time, date=parsed_date).first()
         except ValueError:
             pass
@@ -542,7 +551,10 @@ def delete_reminder(user_id: int, r_type: str, subject: str, day: str, time_str:
     event = None
     if r_type == "tv":
         try:
-            parsed_date = datetime.strptime(day, "%d.%m").date().replace(year=datetime.now().year)
+            try:
+                parsed_date = datetime.strptime(day, "%d/%m").date().replace(year=datetime.now().year)
+            except ValueError:
+                parsed_date = datetime.strptime(day, "%d.%m").date().replace(year=datetime.now().year)
             event = Event.objects.filter(status="TV", start_time=start_time, date=parsed_date).first()
         except ValueError:
             pass
