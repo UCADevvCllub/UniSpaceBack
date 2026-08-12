@@ -1,9 +1,22 @@
 from django.db import models
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.contrib.auth.models import User
 # Create your models here.
 #  new section
 
+
+class GoogleCredential(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='google_creds'
+    )
+    token = models.JSONField()
+    unispace_calendar_id = models.CharField(max_length=255, blank=True, null=True)
+
+    def __str__(self):
+        return f"Google Credentials for {self.user.username}"
 
 class Room(models.Model):
     room_number = models.CharField(

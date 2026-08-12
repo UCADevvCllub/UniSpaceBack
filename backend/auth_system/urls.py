@@ -29,6 +29,15 @@ urlpatterns = [
     path('auth/', include('djoser.urls')),
     path('auth/', include('djoser.urls.jwt')),
     path('api/', include(router.urls)),
+
+    path('api/google/login/', views.google_login, name='google_login'),
+    path('api/google/callback/', views.google_callback, name='google_callback'),
+
+    path('api/calendar/events/', views.CalendarEventList.as_view(), name='calendar_events'),
+    path('api/calendar/events/<str:pk>/', views.CalendarEventDetail.as_view(), name='calendar_event_detail'),
+
+    path('api/calendar/sync-class/<int:class_id>/', views.SyncClassToGoogle.as_view(), name='sync_class'),
+
 ]
 
 urlpatterns += [re_path(r'^.*', TemplateView.as_view(template_name='index.html'))]

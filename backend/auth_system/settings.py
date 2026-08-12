@@ -75,6 +75,9 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
 ]
 
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_HTTPONLY = True
+
 ROOT_URLCONF = 'auth_system.urls'
 
 TEMPLATES = [
