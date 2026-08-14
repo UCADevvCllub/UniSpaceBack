@@ -41,7 +41,6 @@ class Subject(models.Model):
 
 class Cohort(models.Model):
     study_year_id = models.ForeignKey(StudyYear, on_delete=models.CASCADE, null=True, blank=True, db_column='study_year_id')
-    room_id = models.ForeignKey(Room, on_delete=models.CASCADE, null=True, blank=True, db_column='room_id')
     CHOICES = [
         ('CM', 'CM'),
         ('CS', 'CS'),
