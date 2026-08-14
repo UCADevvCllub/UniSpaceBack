@@ -1,11 +1,11 @@
 info:
   name: GET New Access Token
   type: http
-  seq: 4
+  seq: 3
 
 http:
   method: POST
-  url: http://localhost:8000/auth/jwt/refresh/
+  url: "{{host}}/auth/jwt/refresh/"
   headers:
     - name: Content-Type
       value: application/json

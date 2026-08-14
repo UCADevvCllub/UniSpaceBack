@@ -1,11 +1,11 @@
 info:
   name: Getting all gym events
   type: http
-  seq: 14
+  seq: 10
 
 http:
   method: GET
-  url: http://127.0.0.1:8000/api/gym-events/
+  url: "{{host}}/api/gym-events/"
   auth: inherit
 
 settings:

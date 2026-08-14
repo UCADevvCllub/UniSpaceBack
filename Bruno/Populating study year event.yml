@@ -1,0 +1,21 @@
+info:
+  name: Populating study year event
+  type: http
+  seq: 29
+
+http:
+  method: POST
+  url: "{{host}}/api/study-year-entries/"
+  body:
+    type: json
+    data: |
+      {
+        "year_name": "FESH"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

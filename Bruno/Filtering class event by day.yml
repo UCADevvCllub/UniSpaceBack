@@ -1,11 +1,11 @@
 info:
   name: Filtering class event by day
   type: http
-  seq: 22
+  seq: 14
 
 http:
   method: GET
-  url: http://127.0.0.1:8000/api/schedule/?day=FRI
+  url: "{{host}}/api/schedule/?day=FRI"
   params:
     - name: day
       value: FRI

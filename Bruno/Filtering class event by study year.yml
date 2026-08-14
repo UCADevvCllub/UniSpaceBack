@@ -1,11 +1,11 @@
 info:
   name: Filtering class event by study year
   type: http
-  seq: 26
+  seq: 16
 
 http:
   method: GET
-  url: http://127.0.0.1:8000/api/schedule/?study_year=2029
+  url: "{{host}}/api/schedule/?study_year=2029"
   params:
     - name: study_year
       value: "2029"

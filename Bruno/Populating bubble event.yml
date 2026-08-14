@@ -1,11 +1,11 @@
 info:
   name: Populating bubble event
   type: http
-  seq: 10
+  seq: 7
 
 http:
   method: POST
-  url: http://127.0.0.1:8000/api/bubble-events/
+  url: "{{host}}/api/bubble-events/"
   body:
     type: json
     data: |-
