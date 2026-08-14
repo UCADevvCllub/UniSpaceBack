@@ -7,6 +7,12 @@ cd backend
 echo "Applying database migrations..."
 python manage.py migrate --noinput
 
+# logs_db is a separate database (see auth_system/db_router.py) that
+# `migrate` doesn't touch unless told to explicitly -- without this,
+# APILog/APISQLLog never get their tables created.
+echo "Applying logs_db migrations..."
+python manage.py migrate --database=logs_db --noinput
+
 # Collect static files (admin, DRF, Jazzmin) so WhiteNoise can serve them
 echo "Collecting static files..."
 python manage.py collectstatic --noinput
