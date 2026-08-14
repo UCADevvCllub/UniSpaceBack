@@ -1,4 +1,5 @@
 from django.test import TestCase
+from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 from rest_framework import status
 from camphub.models import GymEvent, BubbleEvent, Event
@@ -6,6 +7,12 @@ from camphub.models import GymEvent, BubbleEvent, Event
 class EndpointFixesTestCase(TestCase):
     def setUp(self):
         self.client = APIClient()
+        # Write endpoints are admin-only; authenticate so these tests
+        # exercise the create/update logic rather than the permission check.
+        admin = get_user_model().objects.create_user(
+            email='admin@test.com', password='pass', is_staff=True
+        )
+        self.client.force_authenticate(user=admin)
 
     def test_bubble_event_accepts_football(self):
         payload = {

@@ -96,6 +96,7 @@ class ScheduleSerializer(serializers.ModelSerializer):
 #         fields = ['day', 'start_time', 'end_time']
 
 class BubbleEventSerializer(serializers.ModelSerializer):
+    name = serializers.CharField()
     event = EventSerializer(source='event_id', read_only=True)
     event_data = EventSerializer(write_only=True, required=False)
 
@@ -106,10 +107,18 @@ class BubbleEventSerializer(serializers.ModelSerializer):
     def validate_name(self, value):
         if not value:
             return value
-        valid_map = {c[0].upper(): c[0] for c in BubbleEvent.CHOICES}
-        if value.upper() in valid_map:
-            return valid_map[value.upper()]
-        return value
+        cleaned = value.strip().upper()
+        valid_keys = [choice[0] for choice in BubbleEvent.CHOICES]
+        
+        if cleaned in valid_keys:
+            return cleaned
+            
+        # Check if matched against choice labels (display names)
+        label_map = {choice[1].upper(): choice[0] for choice in BubbleEvent.CHOICES}
+        if cleaned in label_map:
+            return label_map[cleaned]
+
+        raise serializers.ValidationError(f'"{value}" is not a valid choice.')
 
     def create(self, validated_data):
         event_data = validated_data.pop('event_data')

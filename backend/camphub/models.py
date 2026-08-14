@@ -67,6 +67,7 @@ class Event(models.Model):
     day = models.CharField(max_length=3, choices=DAYS, default='MON')
     start_time = models.TimeField()
     end_time = models.TimeField()
+
     status = models.CharField(
         max_length=50, choices=CHOICES, default='GYM')
     date = models.DateField(null=True, blank=True)
@@ -235,14 +236,26 @@ class BubbleEvent(models.Model):
         ('PE', 'PHYSICAL EDUCATION'),
         ('SECURITY', 'UCA SECURITY'),
         ('VOLLEYBALL', 'VOLLEYBALL'),
+        ('volleyball', 'volleyball'),
         ('BASKETBALL', 'BASKETBALL'),
+        ('basketball', 'basketball'),
         ('CRICKET', 'CRICKET'),
+        ('cricket', 'cricket'),
+        ('JUDO', 'JUDO'),
+        ('judo', 'judo'),
         ('JUDO GRAPPLING', 'JUDO GRAPPLING'),
         ('MEP&KITCHEN', 'MEP&KITCHEN'),
         ('TENNIS', 'TENNIS'),
-
-    
-        ]
+        ('tennis', 'tennis'),
+        ('TABLE TENNIS', 'TABLE TENNIS'),
+        ('table tennis', 'table tennis'),
+        ('BADMINTON', 'BADMINTON'),
+        ('badminton', 'badminton'),
+        ('FUTSAL', 'FUTSAL'),
+        ('futsal', 'futsal'),
+        ('CHESS', 'CHESS'),
+        ('chess', 'chess'),
+    ]
     name = models.CharField(max_length=100, choices=CHOICES, default='CLEANING')
     event_id = models.ForeignKey(
         Event, on_delete=models.CASCADE, null=True, blank=True, db_column='event_id')
