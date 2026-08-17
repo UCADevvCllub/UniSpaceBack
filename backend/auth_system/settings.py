@@ -70,6 +70,9 @@ MIDDLEWARE = [
 
 CORS_ALLOW_CREDENTIALS = True
 
+# Allow requests from any origin. CORS_ALLOWED_ORIGINS is ignored while this is on.
+CORS_ALLOW_ALL_ORIGINS = True
+
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
@@ -215,6 +218,7 @@ DJOSER = {
     'SERIALIZERS': {
         'user_create': 'accounts.serializers.UserCreateSerializer',
         'user': 'accounts.serializers.UserCreateSerializer',
+        'current_user': 'accounts.serializers.UserCreateSerializer',
         'user_delete': 'djoser.serializers.UserDeleteSerializer',
     }
 }
