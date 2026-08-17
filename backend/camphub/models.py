@@ -231,25 +231,13 @@ class BubbleEvent(models.Model):
         ('PE', 'PHYSICAL EDUCATION'),
         ('SECURITY', 'UCA SECURITY'),
         ('VOLLEYBALL', 'VOLLEYBALL'),
-        ('volleyball', 'volleyball'),
         ('BASKETBALL', 'BASKETBALL'),
-        ('basketball', 'basketball'),
         ('CRICKET', 'CRICKET'),
-        ('cricket', 'cricket'),
-        ('JUDO', 'JUDO'),
-        ('judo', 'judo'),
         ('JUDO GRAPPLING', 'JUDO GRAPPLING'),
         ('MEP&KITCHEN', 'MEP&KITCHEN'),
         ('TENNIS', 'TENNIS'),
-        ('tennis', 'tennis'),
-        ('TABLE TENNIS', 'TABLE TENNIS'),
-        ('table tennis', 'table tennis'),
-        ('BADMINTON', 'BADMINTON'),
-        ('badminton', 'badminton'),
-        ('FUTSAL', 'FUTSAL'),
-        ('futsal', 'futsal'),
-        ('CHESS', 'CHESS'),
-        ('chess', 'chess'),
+
+    
     ]
     name = models.CharField(max_length=100, choices=CHOICES, default='CLEANING')
     event_id = models.ForeignKey(
