@@ -4,15 +4,21 @@ from rest_framework.test import APIClient
 from rest_framework import status
 from camphub.models import GymEvent, BubbleEvent, Event
 
+from accounts.models import UserAccount
+
 class EndpointFixesTestCase(TestCase):
+    databases = {'default', 'logs_db'}
+
     def setUp(self):
         self.client = APIClient()
-        # Write endpoints are admin-only; authenticate so these tests
-        # exercise the create/update logic rather than the permission check.
-        admin = get_user_model().objects.create_user(
-            email='admin@test.com', password='pass', is_staff=True
+        self.user = UserAccount.objects.create_user(
+            email='testuser@example.com',
+            password='testpassword123',
+            name='Test User'
         )
-        self.client.force_authenticate(user=admin)
+        self.user.is_staff = True
+        self.user.save()
+        self.client.force_authenticate(user=self.user)
 
     def test_bubble_event_accepts_football(self):
         payload = {

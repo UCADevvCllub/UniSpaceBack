@@ -39,6 +39,12 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
                             null=True,   blank=True)
     telegram_id = models.BigIntegerField(unique=True, null=True, blank=True)
 
+    MAJOR_CHOICES = [
+        ('CS', 'Computer Science'),
+        ('CM', 'Communications and Media'),
+    ]
+    major = models.CharField(max_length=10, choices=MAJOR_CHOICES, null=True, blank=True)
+
     cohort = models.ForeignKey(
         "camphub.Cohort", on_delete=models.SET_NULL, null=True, blank=True)
     objects = UserAccountManager()

@@ -10,7 +10,11 @@ postman
 frontend/.env
 __pycache__/
 *.pyc
+*.sqlite3
 backend/db.sqlite3
 backend/logs.sqlite3
+<<<<<<< HEAD
 backend/static/
 
+=======
+>>>>>>> origin/main

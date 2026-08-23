@@ -156,7 +156,7 @@ def get_user(telegram_id: int):
 
 
 @sync_to_async
-def create_user(telegram_id: int, name: str = None, gender: str = None, cohort_name: str = None):
+def create_user(telegram_id: int, name: str = None, gender: str = None, cohort_name: str = None, major: str = None):
     email = f"tg_{telegram_id}@unispace.com"
     cohort = None
     if cohort_name:
@@ -167,7 +167,8 @@ def create_user(telegram_id: int, name: str = None, gender: str = None, cohort_n
         name=name or "Student",
         telegram_id=telegram_id,
         gender=gender.upper() if gender else None,
-        cohort=cohort
+        cohort=cohort,
+        major=major.upper() if major else None
     )
     u.academic_level = cohort_name
     return u
@@ -192,6 +193,17 @@ def update_user_gender(telegram_id: int, gender: str):
     try:
         u = UserAccount.objects.get(telegram_id=telegram_id)
         u.gender = gender.upper()
+        u.save()
+        return u
+    except UserAccount.DoesNotExist:
+        return None
+
+
+@sync_to_async
+def update_user_major(telegram_id: int, major: str):
+    try:
+        u = UserAccount.objects.get(telegram_id=telegram_id)
+        u.major = major.upper()
         u.save()
         return u
     except UserAccount.DoesNotExist:
