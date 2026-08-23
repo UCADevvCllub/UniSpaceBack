@@ -236,8 +236,9 @@ class BubbleEvent(models.Model):
         ('JUDO GRAPPLING', 'JUDO GRAPPLING'),
         ('MEP&KITCHEN', 'MEP&KITCHEN'),
         ('TENNIS', 'TENNIS'),
-
-    
+        ('UCA FACULTY', 'UCA FACULTY'),
+        ('VOLLEYBALL FEMALE', 'VOLLEYBALL FEMALE'),
+        ('BADMINTON', 'BADMINTON'),
     ]
     name = models.CharField(max_length=100, choices=CHOICES, default='CLEANING')
     event_id = models.ForeignKey(
