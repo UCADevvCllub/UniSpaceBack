@@ -3,9 +3,21 @@ from rest_framework.test import APIClient
 from rest_framework import status
 from camphub.models import GymEvent, BubbleEvent, Event
 
+from accounts.models import UserAccount
+
 class EndpointFixesTestCase(TestCase):
+    databases = {'default', 'logs_db'}
+
     def setUp(self):
         self.client = APIClient()
+        self.user = UserAccount.objects.create_user(
+            email='testuser@example.com',
+            password='testpassword123',
+            name='Test User'
+        )
+        self.user.is_staff = True
+        self.user.save()
+        self.client.force_authenticate(user=self.user)
 
     def test_bubble_event_accepts_football(self):
         payload = {
