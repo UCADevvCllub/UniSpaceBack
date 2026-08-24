@@ -27,13 +27,17 @@ class StudyYear(models.Model):
 
 
 class Subject(models.Model):
-    CHOICES = [
-        ('MATH', 'Math'),
-        ('ENGLISH', 'English'),
-        ('PHYSICS', 'Physics'),
-        ('KYRGIZ', 'Kyrgiz'),
-    ]
-    name = models.CharField(max_length=50, choices=CHOICES)
+    # CHOICES = [
+    #     ('Calculus II', 'Calculus II'),
+    #     ('English', 'English'),
+    #     ('Physics', 'Physics'),
+    #     ('Sociology', 'Sociology'),
+    #     ('GEO of Kyrgyzstan', 'Geography of Kyrgyzstan'),
+    #     ('AUDI For Com&Media', 'Audiences for Communications and Media'),
+    #     ('PE', 'Physical Training'),
+
+    # ]
+    name = models.CharField(max_length=50)
 
     def __str__(self):
         return self.name
