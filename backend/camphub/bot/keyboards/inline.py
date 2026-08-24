@@ -10,20 +10,18 @@ def get_academic_level_kb() -> InlineKeyboardMarkup:
     builder.adjust(2)
     return builder.as_markup()
 
+def get_major_kb(prefix: str = "major_") -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Computer Science (CS)", callback_data=f"{prefix}CS")
+    builder.button(text="Communications & Media (CM)", callback_data=f"{prefix}CM")
+    builder.adjust(1)
+    return builder.as_markup()
+
 def get_lessons_submenu_kb() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="Today's Lessons", callback_data="lessons_today")
     builder.button(text="Weekly Schedule", callback_data="lessons_weekly")
     builder.button(text="Set Reminder", callback_data="lessons_reminder")
-    builder.button(text="Edit", callback_data="lessons_edit")
-    builder.adjust(1)
-    return builder.as_markup()
-
-def get_edit_lessons_kb() -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-    builder.button(text="Add Lesson", callback_data="edit_lesson_add")
-    builder.button(text="Remove Lesson", callback_data="edit_lesson_remove")
-    builder.button(text="Back", callback_data="lessons_menu_back")
     builder.adjust(1)
     return builder.as_markup()
 

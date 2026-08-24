@@ -2,6 +2,7 @@ backend/.venv/
 backend/__pycache__/
 backend/*.pyc
 backend/.env
+.env
 .venv
 venv/
 .postman
@@ -9,6 +10,6 @@ postman
 frontend/.env
 __pycache__/
 *.pyc
+*.sqlite3
 backend/db.sqlite3
-backend/.env
-
+backend/logs.sqlite3

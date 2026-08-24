@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('camphub', '0002_tvlounge_remove_tvbooking_lounge_name_cohort_room_id_and_more'),
+        ('camphub', '0003_apilog'),
     ]
 
     operations = [
