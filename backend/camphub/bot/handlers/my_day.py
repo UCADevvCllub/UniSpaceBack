@@ -16,7 +16,7 @@ async def my_day_summary(message: Message):
         await message.answer("Please set your academic level first (/start)")
         return
 
-    lessons = await get_lessons_for_day(user.academic_level, today_name)
+    lessons = await get_lessons_for_day(user.academic_level, today_name, major=getattr(user, 'major', None))
     reminders = await get_user_reminders(message.from_user.id)
     tv_bookings = await get_tv_bookings(message.from_user.id)
 
