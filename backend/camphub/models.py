@@ -15,7 +15,7 @@ class Room(models.Model):
 
 class StudyYear(models.Model):
     CHOICES = [
-        ('FESH', 'Fresh'),
+        ('FRESH', 'Fresh'),
         ('SOPH', 'Soph'),
         ('JUN', 'Jun'),
         ('SEN', 'Sen'),

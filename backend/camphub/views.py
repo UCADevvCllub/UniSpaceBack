@@ -61,7 +61,17 @@ class ScheduleViewSet(viewsets.ReadOnlyModelViewSet):
             else:
                 queryset = queryset.filter(cohort_id__cohort_name__iexact=course)
         if study_year:
-            queryset = queryset.filter(cohort_id__study_year_id__year_name__iexact=study_year)
+            if study_year.isdigit():
+                queryset = queryset.filter(cohort_id__study_year_id_id=int(study_year))
+            else:
+                year_map = {
+                    'FRESHMAN': 'FRESH', 'FRESH': 'FRESH',
+                    'SOPHOMORE': 'SOPH', 'SOPH': 'SOPH', 'SOF': 'SOPH',
+                    'JUNIOR': 'JUN', 'JUN': 'JUN',
+                    'SENIOR': 'SEN', 'SEN': 'SEN'
+                }
+                code = year_map.get(study_year.strip().upper(), study_year)
+                queryset = queryset.filter(cohort_id__study_year_id__year_name__iexact=code)
         return queryset
 
 class BubbleEventViewSet(viewsets.ModelViewSet):
