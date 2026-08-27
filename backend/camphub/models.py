@@ -146,7 +146,9 @@ class ClassEvent(models.Model):
         Event, on_delete=models.CASCADE, null=True, blank=True, db_column='event_id')
     room_id = models.ForeignKey(
         Room, on_delete=models.CASCADE, null=True, blank=True, db_column='room_id')
-    
+    linked_event_id = models.ForeignKey(
+        'self', on_delete=models.CASCADE, null=True, blank=True, db_column='linked_event_id', related_name='+')
+
     def clean(self):
         super().clean()
 
