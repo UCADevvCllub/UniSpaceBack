@@ -23,7 +23,7 @@ async def show_today_lessons(callback: CallbackQuery):
         await callback.answer("Please set your academic level first (/start)", show_alert=True)
         return
 
-    lessons = await get_lessons_for_day(user.academic_level, today)
+    lessons = await get_lessons_for_day(user.academic_level, today, major=getattr(user, 'major', None))
     reminders = await get_user_reminders(callback.from_user.id)
 
     if not lessons:
@@ -45,7 +45,7 @@ async def show_weekly_lessons(callback: CallbackQuery):
         await callback.answer("Please set your academic level first", show_alert=True)
         return
 
-    lessons = await get_weekly_lessons(user.academic_level)
+    lessons = await get_weekly_lessons(user.academic_level, major=getattr(user, 'major', None))
     reminders = await get_user_reminders(callback.from_user.id)
 
     if not lessons:
@@ -88,7 +88,7 @@ async def select_reminder_lesson(callback: CallbackQuery):
         )
         return
 
-    lessons = await get_lessons_for_day(user.academic_level, day)
+    lessons = await get_lessons_for_day(user.academic_level, day, major=getattr(user, 'major', None))
 
     if not lessons:
         await callback.message.edit_text(f"No lessons on {day}.")
@@ -125,7 +125,7 @@ async def process_reminder_toggle(callback: CallbackQuery):
             return
 
         if action == "off":
-            await delete_all_lessons_reminders(callback.from_user.id, user.academic_level)
+            await delete_all_lessons_reminders(callback.from_user.id, user.academic_level, major=getattr(user, 'major', None))
             await callback.message.edit_text("Reminders for all weekly lessons turned OFF.")
         else:
             await callback.message.edit_text(
@@ -168,7 +168,7 @@ async def save_lesson_reminder(callback: CallbackQuery):
         user = await get_user(callback.from_user.id)
         if not user or not user.academic_level:
             return
-        await add_all_lessons_reminders(callback.from_user.id, user.academic_level, offset)
+        await add_all_lessons_reminders(callback.from_user.id, user.academic_level, offset, major=getattr(user, 'major', None))
         await callback.message.edit_text(f"Reminders set for all weekly lessons {offset} minutes before start.")
         return
 

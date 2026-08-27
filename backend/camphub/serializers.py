@@ -75,19 +75,31 @@ class ContactSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ScheduleSerializer(serializers.ModelSerializer):
-    day         = serializers.CharField(source='event_id.day')
-    start_time  = serializers.TimeField(source='event_id.start_time')
-    end_time    = serializers.TimeField(source='event_id.end_time')
-    subject     = serializers.CharField(source='subject_id.name')
+    day         = serializers.CharField(source='event_id.day', default='', read_only=True)
+    start_time  = serializers.TimeField(source='event_id.start_time', default=None, read_only=True)
+    end_time    = serializers.TimeField(source='event_id.end_time', default=None, read_only=True)
+    subject     = serializers.SerializerMethodField()
     instructor  = serializers.SerializerMethodField()
-    cohort      = serializers.CharField(source='cohort_id.cohort_name')
-    course_year = serializers.CharField(source='cohort_id.study_year_id.year_name')
+    cohort      = serializers.SerializerMethodField()
+    course_year = serializers.SerializerMethodField()
     class Meta:
         model = ClassEvent
         fields = ['id', 'day', 'start_time', 'end_time', 'subject', 'instructor', 'cohort', 'course_year']
+    def get_subject(self, obj):
+        if obj.subject_id and obj.subject_id.name:
+            return obj.subject_id.name
+        return "General Class"
     def get_instructor(self, obj):
         if obj.instructor_id:
             return f"{obj.instructor_id.first_name} {obj.instructor_id.last_name}"
+        return None
+    def get_cohort(self, obj):
+        if obj.cohort_id:
+            return obj.cohort_id.cohort_name
+        return None
+    def get_course_year(self, obj):
+        if obj.cohort_id and obj.cohort_id.study_year_id:
+            return obj.cohort_id.study_year_id.year_name
         return None
 
 # class EventWriteSerializer(serializers.ModelSerializer):
@@ -342,6 +354,7 @@ class ClassEventSerializer(serializers.ModelSerializer):
     cohort_detail = CohortSerializer(source='cohort_id', read_only=True)
     room_detail = RoomSerializer(source='room_id', read_only=True)
     event_detail = EventSerializer(source='event_id', read_only=True)
+    linked_event_id = serializers.PrimaryKeyRelatedField(read_only=True)
 
 
     event_data = EventSerializer(write_only=True)
@@ -365,7 +378,8 @@ class ClassEventSerializer(serializers.ModelSerializer):
         
         fields = [
             'id', 'subject_id', 'instructor_id', 'cohort_id', 'event_id',  'room_id', 'event_data',
-            'subject_detail', 'instructor_detail', 'cohort_detail', 'room_detail', 'event_detail'
+            'subject_detail', 'instructor_detail', 'cohort_detail', 'room_detail', 'event_detail',
+            'linked_event_id'
         ]
     def create(self, validated_data):
         event_data = validated_data.pop('event_data')

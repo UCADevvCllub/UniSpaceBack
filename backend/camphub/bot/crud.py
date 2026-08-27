@@ -1,5 +1,5 @@
 from asgiref.sync import sync_to_async
-from django.conf import settings
+from django.db import models
 from accounts.models import UserAccount
 from camphub.models import (
     Cohort, Subject, ClassEvent, GymEvent, Event,
@@ -18,6 +18,17 @@ day_reverse = {
     "FRI": "Friday", "SAT": "Saturday", "SUN": "Sunday"
 }
 
+level_code_map = {
+    "Freshman": "FRESH",
+    "Sophomore": "SOPH",
+    "Junior": "JUN",
+    "Senior": "SEN",
+    "FRESH": "FRESH",
+    "SOPH": "SOPH",
+    "JUN": "JUN",
+    "SEN": "SEN"
+}
+
 # Compatibility wrappers to mimic SQLAlchemy model objects
 
 
@@ -28,7 +39,7 @@ class LessonWrapper:
         self.academic_level = entry.cohort_id.cohort_name if entry.cohort_id else ""
         self.day_of_week = day_reverse.get(entry.event_id.day, entry.event_id.day) if entry.event_id else ""
         self.time_str = entry.event_id.start_time.strftime("%H:%M") if entry.event_id and entry.event_id.start_time else "09:00"
-        self.subject_name = entry.subject_id.name.title() if entry.subject_id else ""
+        self.subject_name = entry.subject_id.name.title() if (entry.subject_id and entry.subject_id.name) else "General Class"
 
 
 class GymSlotWrapper:
@@ -211,20 +222,27 @@ def update_user_major(telegram_id: int, major: str):
 
 # --- Lessons CRUD (ClassEvent + Event) ---
 @sync_to_async
-def get_lessons_for_day(level: str, day: str):
+def get_lessons_for_day(level: str, day: str, major: str = None):
     day_code = day_mapping.get(day, day)
-    entries = ClassEvent.objects.filter(
-        cohort_id__cohort_name=level,
-        event_id__day=day_code,
-    ).select_related('cohort_id', 'subject_id', 'event_id').order_by('event_id__start_time')
+    queryset = ClassEvent.objects.filter(event_id__day=day_code)
+    if level:
+        code = level_code_map.get(level, level)
+        queryset = queryset.filter(cohort_id__study_year_id__year_name=code)
+    if major:
+        queryset = queryset.filter(cohort_id__cohort_name=major)
+    entries = queryset.select_related('cohort_id', 'cohort_id__study_year_id', 'subject_id', 'event_id').order_by('event_id__start_time')
     return [LessonWrapper(e) for e in entries]
 
 
 @sync_to_async
-def get_weekly_lessons(level: str):
-    entries = ClassEvent.objects.filter(
-        cohort_id__cohort_name=level,
-    ).select_related('cohort_id', 'subject_id', 'event_id').order_by('event_id__day', 'event_id__start_time')
+def get_weekly_lessons(level: str, major: str = None):
+    queryset = ClassEvent.objects.all()
+    if level:
+        code = level_code_map.get(level, level)
+        queryset = queryset.filter(cohort_id__study_year_id__year_name=code)
+    if major:
+        queryset = queryset.filter(cohort_id__cohort_name=major)
+    entries = queryset.select_related('cohort_id', 'cohort_id__study_year_id', 'subject_id', 'event_id').order_by('event_id__day', 'event_id__start_time')
     return [LessonWrapper(e) for e in entries]
 
 
@@ -584,9 +602,14 @@ def delete_reminder(user_id: int, r_type: str, subject: str, day: str, time_str:
         Reminder.objects.filter(user_id=u, event_id=event).delete()
 
 @sync_to_async
-def add_all_lessons_reminders(user_id: int, level: str, offset: int):
+def add_all_lessons_reminders(user_id: int, level: str, offset: int, major: str = None):
     u = UserAccount.objects.get(telegram_id=user_id)
-    class_events = ClassEvent.objects.filter(cohort_id__cohort_name=level).select_related('event_id')
+    class_events = ClassEvent.objects.all()
+    if level:
+        class_events = class_events.filter(cohort_id__study_year_id__year_name=level) | class_events.filter(cohort_id__cohort_name=level)
+    if major:
+        class_events = class_events.filter(cohort_id__cohort_name=major)
+    class_events = class_events.select_related('event_id')
     
     reminders_created = 0
     for ce in class_events:
@@ -603,9 +626,14 @@ def add_all_lessons_reminders(user_id: int, level: str, offset: int):
     return reminders_created
 
 @sync_to_async
-def delete_all_lessons_reminders(user_id: int, level: str):
+def delete_all_lessons_reminders(user_id: int, level: str, major: str = None):
     u = UserAccount.objects.get(telegram_id=user_id)
-    class_events = ClassEvent.objects.filter(cohort_id__cohort_name=level).select_related('event_id')
+    class_events = ClassEvent.objects.all()
+    if level:
+        class_events = class_events.filter(cohort_id__study_year_id__year_name=level) | class_events.filter(cohort_id__cohort_name=level)
+    if major:
+        class_events = class_events.filter(cohort_id__cohort_name=major)
+    class_events = class_events.select_related('event_id')
     event_ids = [ce.event_id.id for ce in class_events if ce.event_id]
     
     deleted_count, _ = Reminder.objects.filter(user_id=u, event_id_id__in=event_ids).delete()
