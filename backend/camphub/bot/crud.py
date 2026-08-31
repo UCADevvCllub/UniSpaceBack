@@ -18,17 +18,46 @@ day_reverse = {
     "FRI": "Friday", "SAT": "Saturday", "SUN": "Sunday"
 }
 
+# level_code_map = {
+#     "Freshman": "FRESH",
+#     "Sophomore": "SOPH",
+#     "Junior": "JUN",
+#     "Senior": "SEN",
+#     "FRESH": "FRESH",
+#     "SOPH": "SOPH",
+#     "JUN": "JUN",
+#     "SEN": "SEN"
+# }
+
+
+# reverse_level_map = {
+#     "FRESH": "Freshman",
+#     "SOPH": "Sophomore",
+#     "JUN": "Junior",
+#     "SEN": "Senior"
+# }
+
+
+
+# In camphub/bot/crud.py
+
 level_code_map = {
-    "Freshman": "FRESH",
+    "Freshman": "JUN",      # Map Freshman to "JUN" (since Freshman classes are stored here)
     "Sophomore": "SOPH",
-    "Junior": "JUN",
+    "Junior": "FRESH",      # Map Junior to "FRESH" (since Junior classes are stored here)
     "Senior": "SEN",
-    "FRESH": "FRESH",
+    "FRESH": "JUN",         # Maintain reverse compatibility
     "SOPH": "SOPH",
-    "JUN": "JUN",
+    "JUN": "FRESH",
     "SEN": "SEN"
 }
 
+reverse_level_map = {
+    "JUN": "Freshman",      # "JUN" in the DB represents the Freshman display level
+    "SOPH": "Sophomore",
+    "FRESH": "Junior",      # "FRESH" in the DB represents the Junior display level
+    "SEN": "Senior"
+}
 # Compatibility wrappers to mimic SQLAlchemy model objects
 
 
@@ -155,24 +184,86 @@ def parse_time_str(t_str):
 # --- User CRUD ---
 
 
+# @sync_to_async
+# def get_user(telegram_id: int):
+#     try:
+#         u = UserAccount.objects.select_related(
+#             'cohort').get(telegram_id=telegram_id)
+#         u.academic_level = u.cohort.cohort_name if u.cohort else None
+#         return u
+#     except UserAccount.DoesNotExist:
+#         return None
+
 @sync_to_async
 def get_user(telegram_id: int):
     try:
-        u = UserAccount.objects.select_related(
-            'cohort').get(telegram_id=telegram_id)
-        u.academic_level = u.cohort.cohort_name if u.cohort else None
+        # Load the cohort and study year relations
+        u = UserAccount.objects.select_related('cohort', 'cohort__study_year_id').get(telegram_id=telegram_id)
+        if u.cohort and u.cohort.study_year_id:
+            # Dynamically translate the database year name (e.g., "FRESH") to "Freshman"
+            u.academic_level = reverse_level_map.get(u.cohort.study_year_id.year_name, "Not set")
+        else:
+            u.academic_level = "Not set"
         return u
     except UserAccount.DoesNotExist:
         return None
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# @sync_to_async
+# def create_user(telegram_id: int, name: str = None, gender: str = None, cohort_name: str = None, major: str = None):
+#     email = f"tg_{telegram_id}@unispace.com"
+#     cohort = None
+#     if cohort_name:
+#         study_year, _ = StudyYear.objects.get_or_create(year_name="2025-2026")
+#         cohort, _ = Cohort.objects.get_or_create(cohort_name=cohort_name, defaults={'study_year_id': study_year})
+#     u = UserAccount.objects.create(
+#         email=email,
+#         name=name or "Student",
+#         telegram_id=telegram_id,
+#         gender=gender.upper() if gender else None,
+#         cohort=cohort,
+#         major=major.upper() if major else None
+#     )
+#     u.academic_level = cohort_name
+#     return u
+
 
 
 @sync_to_async
 def create_user(telegram_id: int, name: str = None, gender: str = None, cohort_name: str = None, major: str = None):
     email = f"tg_{telegram_id}@unispace.com"
     cohort = None
-    if cohort_name:
-        study_year, _ = StudyYear.objects.get_or_create(year_name="2025-2026")
-        cohort, _ = Cohort.objects.get_or_create(cohort_name=cohort_name, defaults={'study_year_id': study_year})
+    if cohort_name and major:
+        # 1. Map "Freshman" -> "FRESH"
+        code = level_code_map.get(cohort_name, cohort_name)
+        # 2. Find the correct StudyYear row
+        study_year = StudyYear.objects.filter(year_name=code).first()
+        if study_year:
+            # 3. Find/get the cohort matching the Major ("CS") and StudyYear ("FRESH")
+            cohort, _ = Cohort.objects.get_or_create(
+                cohort_name=major.upper(),
+                study_year_id=study_year
+            )
+            
     u = UserAccount.objects.create(
         email=email,
         name=name or "Student",
@@ -185,18 +276,78 @@ def create_user(telegram_id: int, name: str = None, gender: str = None, cohort_n
     return u
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# @sync_to_async
+# def update_user_level(telegram_id: int, level: str):
+#     try:
+#         study_year, _ = StudyYear.objects.get_or_create(year_name="2025-2026")
+#         cohort, _ = Cohort.objects.get_or_create(cohort_name=level, defaults={'study_year_id': study_year})
+#         u = UserAccount.objects.get(telegram_id=telegram_id)
+#         u.cohort = cohort
+#         u.save()
+#         u.academic_level = level
+#         return u
+#     except UserAccount.DoesNotExist:
+#         return None
+
 @sync_to_async
 def update_user_level(telegram_id: int, level: str):
     try:
-        study_year, _ = StudyYear.objects.get_or_create(year_name="2025-2026")
-        cohort, _ = Cohort.objects.get_or_create(cohort_name=level, defaults={'study_year_id': study_year})
-        u = UserAccount.objects.get(telegram_id=telegram_id)
-        u.cohort = cohort
-        u.save()
+        u = UserAccount.objects.select_related('cohort').get(telegram_id=telegram_id)
+        major = u.major  # "CS" or "CM"
+        if major:
+            # Map "Freshman" -> "FRESH" and find StudyYear row
+            code = level_code_map.get(level, level)
+            study_year = StudyYear.objects.filter(year_name=code).first()
+            if study_year:
+                # Find/get the Cohort matching major ("CS") and study year ("FRESH")
+                cohort, _ = Cohort.objects.get_or_create(
+                    cohort_name=major.upper(),
+                    study_year_id=study_year
+                )
+                u.cohort = cohort
+                u.save()
         u.academic_level = level
         return u
     except UserAccount.DoesNotExist:
         return None
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 @sync_to_async
@@ -210,15 +361,48 @@ def update_user_gender(telegram_id: int, gender: str):
         return None
 
 
+
+
+# @sync_to_async
+# def update_user_major(telegram_id: int, major: str):
+#     try:
+#         u = UserAccount.objects.get(telegram_id=telegram_id)
+#         u.major = major.upper()
+#         u.save()
+#         return u
+#     except UserAccount.DoesNotExist:
+#         return None
+
 @sync_to_async
 def update_user_major(telegram_id: int, major: str):
     try:
-        u = UserAccount.objects.get(telegram_id=telegram_id)
+        u = UserAccount.objects.select_related('cohort', 'cohort__study_year_id').get(telegram_id=telegram_id)
         u.major = major.upper()
+        # Update cohort to match the new major but retain the same StudyYear
+        if u.cohort and u.cohort.study_year_id:
+            cohort, _ = Cohort.objects.get_or_create(
+                cohort_name=major.upper(),
+                study_year_id=u.cohort.study_year_id
+            )
+            u.cohort = cohort
         u.save()
         return u
     except UserAccount.DoesNotExist:
         return None
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # --- Lessons CRUD (ClassEvent + Event) ---
 @sync_to_async
