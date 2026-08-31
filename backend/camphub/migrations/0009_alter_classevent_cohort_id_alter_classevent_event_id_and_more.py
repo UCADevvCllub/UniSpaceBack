@@ -8,6 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
+        ('camphub', '0008_classevent_linked_event_id'),
         ('camphub', '0008_event_date_alter_event_status'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
@@ -32,11 +33,6 @@ class Migration(migrations.Migration):
             model_name='classevent',
             name='subject_id',
             field=models.ForeignKey(blank=True, db_column='subject_id', null=True, on_delete=django.db.models.deletion.CASCADE, to='camphub.subject'),
-        ),
-        migrations.AlterField(
-            model_name='cohort',
-            name='room_id',
-            field=models.ForeignKey(blank=True, db_column='room_id', null=True, on_delete=django.db.models.deletion.CASCADE, to='camphub.room'),
         ),
         migrations.AlterField(
             model_name='cohort',

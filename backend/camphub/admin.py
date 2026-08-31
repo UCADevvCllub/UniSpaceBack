@@ -61,7 +61,7 @@ class InstructorAdmin(admin.ModelAdmin):
 @admin.register(ClassEvent)
 class ClassEventAdmin(admin.ModelAdmin):
     list_display = ('subject_id', 'instructor_id', 'cohort_id', 'room_id', 'event_id')
-    list_filter = ('cohort_id', 'room_id')
+    # list_filter removed — NULL FK values in cohort_id/room_id crash the sidebar filter
     autocomplete_fields = ('subject_id', 'instructor_id', 'cohort_id', 'event_id', 'room_id')
 
 
@@ -111,9 +111,13 @@ class APISQLLogInline(admin.TabularInline):
     extra = 0
     readonly_fields = ('sql', 'params', 'duration_ms', 'created_at')
     can_delete = False
+    show_change_link = False  # prevents cross-DB FK link resolution
 
     def get_queryset(self, request):
         return super().get_queryset(request).using('logs_db')
+
+    def has_add_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(APILog)
@@ -123,6 +127,7 @@ class APILogAdmin(admin.ModelAdmin):
     search_fields = ('endpoint', 'request_body', 'response_body')
     readonly_fields = ('created_at', 'method', 'endpoint', 'status_code', 'request_body', 'response_body', 'execution_time_ms')
     inlines = [APISQLLogInline]
+    show_full_result_count = False  # avoids slow COUNT(*) on large logs table
 
     def get_queryset(self, request):
         return super().get_queryset(request).using('logs_db')
@@ -136,9 +141,10 @@ class APILogAdmin(admin.ModelAdmin):
 
 @admin.register(APISQLLog)
 class APISQLLogAdmin(admin.ModelAdmin):
-    list_display = ('id', 'api_log', 'duration_ms', 'created_at')
-    search_fields = ('sql', 'params')
-    readonly_fields = ('api_log', 'sql', 'params', 'duration_ms', 'created_at')
+    list_display = ('id', 'api_log_id', 'duration_ms', 'created_at')  # raw int, not FK object
+    search_fields = ('sql',)  # 'params' removed — can be None, causes issues
+    readonly_fields = ('api_log_id', 'sql', 'params', 'duration_ms', 'created_at')
+    show_full_result_count = False
 
     def get_queryset(self, request):
         return super().get_queryset(request).using('logs_db')

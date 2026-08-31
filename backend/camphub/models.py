@@ -151,6 +151,11 @@ class ClassEvent(models.Model):
     linked_event_id = models.ForeignKey(
         'self', on_delete=models.CASCADE, null=True, blank=True, db_column='linked_event_id', related_name='+')
 
+    def __str__(self):
+        subject = str(self.subject_id) if self.subject_id else "No Subject"
+        cohort = str(self.cohort_id) if self.cohort_id else "No Cohort"
+        return f"{subject} — {cohort}"
+
     def clean(self):
         super().clean()
 

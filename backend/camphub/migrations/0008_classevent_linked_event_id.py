@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('camphub', '0007_remove_cohort_room_id_alter_bubbleevent_name_and_more'),
+        ('camphub', '0007_merge'),
     ]
 
     operations = [

@@ -12,8 +12,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name="cohort",
-            name="room_id",
-        ),
+        # Cohort.room_id was already removed in 0007_remove_cohort_room_id...
+        # Keeping this migration as a no-op to preserve the history chain.
     ]
