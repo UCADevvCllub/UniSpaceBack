@@ -50,7 +50,7 @@ class ScheduleViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         queryset = ClassEvent.objects.select_related(
             'event_id', 'subject_id', 'instructor_id',
-            'cohort_id', 'cohort_id__study_year_id'
+            'cohort_id', 'cohort_id__study_year_id', 'room_id'
         )
         day = self.request.query_params.get('day')
         course = self.request.query_params.get('course')
@@ -78,7 +78,7 @@ class ScheduleViewSet(viewsets.ReadOnlyModelViewSet):
         return queryset
 
 class BubbleEventViewSet(viewsets.ModelViewSet):
-    queryset = BubbleEvent.objects.all()
+    queryset = BubbleEvent.objects.select_related('event_id')
     serializer_class = BubbleEventSerializer
 
     def get_permissions(self):
@@ -89,7 +89,7 @@ class BubbleEventViewSet(viewsets.ModelViewSet):
         return [permissions.IsAdminUser()]
 
 class GymEventViewSet(viewsets.ModelViewSet):
-    queryset = GymEvent.objects.all()
+    queryset = GymEvent.objects.select_related('event_id')
     serializer_class = GymEventSerializer
 
     def get_permissions(self):
@@ -100,7 +100,7 @@ class GymEventViewSet(viewsets.ModelViewSet):
         return [permissions.IsAdminUser()]
 
 class MealTimeViewSet(viewsets.ModelViewSet):
-    queryset = MealTime.objects.all()
+    queryset = MealTime.objects.select_related('event_id')
     serializer_class = MealTimeSerializer
 
     def get_permissions(self):
@@ -110,11 +110,11 @@ class MealTimeViewSet(viewsets.ModelViewSet):
         # Only Admins can Add, Edit, or Delete
         return [permissions.IsAdminUser()]
 
-
 class ClassEventViewSet(viewsets.ModelViewSet):
-    queryset =ClassEvent.objects.all()
+    queryset = ClassEvent.objects.select_related(
+        'event_id', 'subject_id', 'instructor_id', 'cohort_id', 'room_id'
+    )
     serializer_class = ClassEventSerializer
-
 
     # permission_classes = [permissions.IsAdminUser]
 
@@ -276,7 +276,7 @@ class TVLoungeViewSet(viewsets.ModelViewSet):
 
 
 class TVBookingViewSet(viewsets.ModelViewSet):
-    queryset = TVBooking.objects.all()
+    queryset = TVBooking.objects.select_related('event_id', 'lounge_id', 'user_id')
     serializer_class = TVBookingSerializer
 
     def get_permissions(self):
