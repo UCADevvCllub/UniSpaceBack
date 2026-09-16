@@ -67,7 +67,11 @@ class LessonWrapper:
         # ClassEvent fields are now accessed via FK relations
         self.academic_level = entry.cohort_id.cohort_name if entry.cohort_id else ""
         self.day_of_week = day_reverse.get(entry.event_id.day, entry.event_id.day) if entry.event_id else ""
-        self.time_str = entry.event_id.start_time.strftime("%H:%M") if entry.event_id and entry.event_id.start_time else "09:00"
+        start = entry.event_id.start_time.strftime("%H:%M") if entry.event_id and entry.event_id.start_time else "09:00"
+        end = entry.event_id.end_time.strftime("%H:%M") if entry.event_id and entry.event_id.end_time else ""
+        self.start_time_str = start
+        self.end_time_str = end
+        self.time_str = f"{start} - {end}" if end else start
         self.subject_name = entry.subject_id.name.title() if (entry.subject_id and entry.subject_id.name) else "General Class"
 
 

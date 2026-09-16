@@ -32,7 +32,7 @@ async def show_today_lessons(callback: CallbackQuery):
 
     text = f"📚 Today's Lessons ({today}):\n\n"
     for l in lessons:
-        r = next((rem for rem in reminders if rem.reminder_type == "lesson" and rem.subject_name == l.subject_name and rem.day == l.day_of_week and rem.event_time_str == l.time_str), None)
+        r = next((rem for rem in reminders if rem.reminder_type == "lesson" and rem.subject_name == l.subject_name and rem.day == l.day_of_week and rem.event_time_str == l.start_time_str), None)
         rem_text = f"⏰ {r.reminder_offset} min" if r else "⏰ No reminder"
         text += f"   • {l.time_str} - {l.subject_name} ({rem_text})\n"
 
@@ -63,7 +63,7 @@ async def show_weekly_lessons(callback: CallbackQuery):
         if day in grouped:
             text += f"📌 {day}:\n"
             for l in grouped[day]:
-                r = next((rem for rem in reminders if rem.reminder_type == "lesson" and rem.subject_name == l.subject_name and rem.day == l.day_of_week and rem.event_time_str == l.time_str), None)
+                r = next((rem for rem in reminders if rem.reminder_type == "lesson" and rem.subject_name == l.subject_name and rem.day == l.day_of_week and rem.event_time_str == l.start_time_str), None)
                 rem_text = f"⏰ {r.reminder_offset} min" if r else "⏰ No reminder"
                 text += f"   • {l.time_str} - {l.subject_name} ({rem_text})\n"
             text += "\n"
