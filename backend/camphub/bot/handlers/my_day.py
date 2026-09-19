@@ -34,7 +34,7 @@ async def my_day_summary(message: Message):
                 r.reminder_type == "lesson" and
                 r.subject_name == l.subject_name and
                 r.day == today_name and
-                r.event_time_str == l.time_str
+                r.event_time_str == l.start_time_str
                 for r in reminders
             )
             rem_suffix = " ⏰" if has_rem else ""
