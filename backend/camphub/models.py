@@ -7,7 +7,7 @@ from django.core.exceptions import ValidationError
 
 class Room(models.Model):
     room_number = models.CharField(
-        max_length=15, unique=True)
+        max_length=30, unique=True)
 
     def __str__(self):
         return self.room_number
@@ -27,21 +27,30 @@ class StudyYear(models.Model):
 
 
 class Subject(models.Model):
-    CHOICES = [
-        ('MATH', 'Math'),
-        ('ENGLISH', 'English'),
-        ('PHYSICS', 'Physics'),
-        ('KYRGIZ', 'Kyrgiz'),
-    ]
-    name = models.CharField(max_length=50, choices=CHOICES)
+    # CHOICES = [
+    #     ('Calculus II', 'Calculus II'),
+    #     ('English', 'English'),
+    #     ('Physics', 'Physics'),
+    #     ('Sociology', 'Sociology'),
+    #     ('GEO of Kyrgyzstan', 'Geography of Kyrgyzstan'),
+    #     ('AUDI For Com&Media', 'Audiences for Communications and Media'),
+    #     ('PE', 'Physical Training'),
+
+    # ]
+    name = models.CharField(max_length=50)
 
     def __str__(self):
         return self.name
 
 
 class Cohort(models.Model):
-    study_year_id = models.ForeignKey(StudyYear, on_delete=models.CASCADE, null=True, blank=True, db_column='study_year_id')
+    study_year_id = models.ForeignKey(
+        StudyYear, on_delete=models.CASCADE, null=True, blank=True, db_column='study_year_id')
     CHOICES = [
+        ('CM_A', 'CM_A'),
+        ('CM_B', 'CM_B'),
+        ('CS_A', 'CS_A'),
+        ('CS_B', 'CS_B'),
         ('CM', 'CM'),
         ('CS', 'CS'),
     ]
@@ -71,7 +80,6 @@ class Event(models.Model):
         max_length=50, choices=CHOICES, default='GYM')
     date = models.DateField(null=True, blank=True)
 
-
     def __str__(self):
         return f"{self.get_status_display()} ({self.get_day_display()} {self.start_time.strftime('%H:%M')}-{self.end_time.strftime('%H:%M')})"
 
@@ -86,33 +94,32 @@ class GymEvent(models.Model):
         max_length=50, choices=CHOICES, default='MALE')
     event_id = models.ForeignKey(
         Event, on_delete=models.CASCADE, null=True, blank=True, db_column='event_id')
-    def clean(self):
-                    super().clean()
-            
-                    if not self.event_id:
-                        return
-        
-                    target_status = self.event_id.status
-                    target_day = self.event_id.day
-                    target_start = self.event_id.start_time
-                    target_end = self.event_id.end_time
-                    
-                    conflicts = GymEvent.objects.filter(
-                        gender=self.gender,
-                        event_id__status=target_status,  # same type
-                        event_id__day=target_day,
-                        event_id__start_time__lt=target_end,
-                        event_id__end_time__gt=target_start
-                    )
-        
-                    if self.pk:
-                                conflicts = conflicts.exclude(pk=self.pk)
-                    if conflicts.exists():
-                        raise ValidationError(
-                            f"Conflict: The Timeslote at that day is occupied"
-                        )
 
-    
+    def clean(self):
+        super().clean()
+
+        if not self.event_id:
+            return
+
+        target_status = self.event_id.status
+        target_day = self.event_id.day
+        target_start = self.event_id.start_time
+        target_end = self.event_id.end_time
+
+        conflicts = GymEvent.objects.filter(
+            gender=self.gender,
+            event_id__status=target_status,  # same type
+            event_id__day=target_day,
+            event_id__start_time__lt=target_end,
+            event_id__end_time__gt=target_start
+        )
+
+        if self.pk:
+            conflicts = conflicts.exclude(pk=self.pk)
+        if conflicts.exists():
+            raise ValidationError(
+                f"Conflict: The Timeslote at that day is occupied"
+            )
 
 
 class Instructor(models.Model):
@@ -142,7 +149,9 @@ class ClassEvent(models.Model):
         Event, on_delete=models.CASCADE, null=True, blank=True, db_column='event_id')
     room_id = models.ForeignKey(
         Room, on_delete=models.CASCADE, null=True, blank=True, db_column='room_id')
-    
+    linked_event_id = models.ForeignKey(
+        'self', on_delete=models.CASCADE, null=True, blank=True, db_column='linked_event_id', related_name='+')
+
     def clean(self):
         super().clean()
 
@@ -162,63 +171,62 @@ class ClassEvent(models.Model):
         )
 
         # prevent self-collision
-        
+
         if self.pk:
             conflicts = conflicts.exclude(pk=self.pk)
-            
+
         if self.cohort_id and self.cohort_id.study_year_id:
-                    current_study_year = self.cohort_id.study_year_id
-                    same_year_cohort_conflicts = conflicts.filter(
-                        cohort_id__study_year_id=current_study_year,
-                        cohort_id=self.cohort_id
+            current_study_year = self.cohort_id.study_year_id
+            same_year_cohort_conflicts = conflicts.filter(
+                cohort_id__study_year_id=current_study_year,
+                cohort_id=self.cohort_id
+            )
+            if same_year_cohort_conflicts.exists():
+                if self.room_id and conflicts.filter(room_id=self.room_id).exists():
+                    raise ValidationError(
+                        f"Conflict: Room {self.room_id} already has a {target_status} event during this time."
                     )
-                    if same_year_cohort_conflicts.exists():
-                        if self.room_id and conflicts.filter(room_id=self.room_id).exists():
-                            raise ValidationError(
-                                f"Conflict: Room {self.room_id} already has a {target_status} event during this time."
-                            )
 
-                        # Instructor Conflict
-                        if self.instructor_id and conflicts.filter(instructor_id=self.instructor_id).exists():
-                            raise ValidationError(
-                                f"Conflict: Instructor {self.instructor_id} is already busy with another {target_status} event."
-                            )
-                        if conflicts.exists():
-                            raise ValidationError(
-                                f"Conflict: The Timeslote at that day is occupied"
-                            )
-
-
+                # Instructor Conflict
+                if self.instructor_id and conflicts.filter(instructor_id=self.instructor_id).exists():
+                    raise ValidationError(
+                        f"Conflict: Instructor {self.instructor_id} is already busy with another {target_status} event."
+                    )
+                if conflicts.exists():
+                    raise ValidationError(
+                        f"Conflict: The Timeslote at that day is occupied"
+                    )
 
 
 class MealTime(models.Model):
     meal_name = models.CharField(max_length=50)
     event_id = models.ForeignKey(
         Event, on_delete=models.CASCADE, null=True, blank=True, db_column='event_id')
+
     def clean(self):
-                super().clean()
-        
-                if not self.event_id:
-                    return
-    
-                target_status = self.event_id.status
-                target_day = self.event_id.day
-                target_start = self.event_id.start_time
-                target_end = self.event_id.end_time
-                
-                conflicts = MealTime.objects.filter(
-                    event_id__status=target_status,  # same type
-                    event_id__day=target_day,
-                    event_id__start_time__lt=target_end,
-                    event_id__end_time__gt=target_start
-                )
-    
-                if self.pk:
-                            conflicts = conflicts.exclude(pk=self.pk)
-                if conflicts.exists():
-                    raise ValidationError(
-                        f"Conflict: The Timeslote at that day is occupied"
-                    )
+        super().clean()
+
+        if not self.event_id:
+            return
+
+        target_status = self.event_id.status
+        target_day = self.event_id.day
+        target_start = self.event_id.start_time
+        target_end = self.event_id.end_time
+
+        conflicts = MealTime.objects.filter(
+            event_id__status=target_status,  # same type
+            event_id__day=target_day,
+            event_id__start_time__lt=target_end,
+            event_id__end_time__gt=target_start
+        )
+
+        if self.pk:
+            conflicts = conflicts.exclude(pk=self.pk)
+        if conflicts.exists():
+            raise ValidationError(
+                f"Conflict: The Timeslote at that day is occupied"
+            )
 
 
 class BubbleEvent(models.Model):
@@ -240,35 +248,35 @@ class BubbleEvent(models.Model):
         ('VOLLEYBALL FEMALE', 'VOLLEYBALL FEMALE'),
         ('BADMINTON', 'BADMINTON'),
     ]
-    name = models.CharField(max_length=100, choices=CHOICES, default='CLEANING')
+    name = models.CharField(
+        max_length=100, choices=CHOICES, default='CLEANING')
     event_id = models.ForeignKey(
         Event, on_delete=models.CASCADE, null=True, blank=True, db_column='event_id')
 
     def clean(self):
-            super().clean()
-    
-            if not self.event_id:
-                return
+        super().clean()
 
-            target_status = self.event_id.status
-            target_day = self.event_id.day
-            target_start = self.event_id.start_time
-            target_end = self.event_id.end_time
-            
-            conflicts = BubbleEvent.objects.filter(
-                event_id__status=target_status,  # same type
-                event_id__day=target_day,
-                event_id__start_time__lt=target_end,
-                event_id__end_time__gt=target_start
+        if not self.event_id:
+            return
+
+        target_status = self.event_id.status
+        target_day = self.event_id.day
+        target_start = self.event_id.start_time
+        target_end = self.event_id.end_time
+
+        conflicts = BubbleEvent.objects.filter(
+            event_id__status=target_status,  # same type
+            event_id__day=target_day,
+            event_id__start_time__lt=target_end,
+            event_id__end_time__gt=target_start
+        )
+
+        if self.pk:
+            conflicts = conflicts.exclude(pk=self.pk)
+        if conflicts.exists():
+            raise ValidationError(
+                f"Conflict: The Timeslote at that day is occupied"
             )
-
-            if self.pk:
-                        conflicts = conflicts.exclude(pk=self.pk)
-            if conflicts.exists():
-                raise ValidationError(
-                    f"Conflict: The Timeslote at that day is occupied"
-                )
-
 
 
 # end of new section
@@ -300,6 +308,7 @@ class Contact(models.Model):
     location = models.CharField(
         max_length=20, choices=LOCATION_CHOICES, null=True, blank=True)
 
+
 class TVLounge(models.Model):
     name = models.CharField(max_length=50, unique=True)
 
@@ -329,7 +338,7 @@ class Reminder(models.Model):
     reminder_offset = models.IntegerField()
     event_id = models.ForeignKey(
         Event, on_delete=models.CASCADE, null=True, blank=True, db_column='event_id')
-    
+
     def __str__(self):
         event_str = f" ({self.event_id.day} {self.event_id.start_time})" if self.event_id else ""
         return f"Reminder {self.id} for {self.user_id}{event_str}"
@@ -355,7 +364,8 @@ class APILog(models.Model):
 
 
 class APISQLLog(models.Model):
-    api_log = models.ForeignKey(APILog, on_delete=models.CASCADE, related_name='sql_queries', db_column='api_log_id')
+    api_log = models.ForeignKey(
+        APILog, on_delete=models.CASCADE, related_name='sql_queries', db_column='api_log_id')
     sql = models.TextField()
     params = models.TextField(null=True, blank=True)
     duration_ms = models.FloatField()
@@ -369,5 +379,3 @@ class APISQLLog(models.Model):
 
     def __str__(self):
         return f"[{self.duration_ms}ms] {self.sql[:50]}..."
-
-
