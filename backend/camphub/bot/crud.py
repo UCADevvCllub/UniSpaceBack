@@ -263,10 +263,15 @@ def create_user(telegram_id: int, name: str = None, gender: str = None, cohort_n
         study_year = StudyYear.objects.filter(year_name=code).first()
         if study_year:
             # 3. Find/get the cohort matching the Major ("CS") and StudyYear ("FRESH")
-            cohort, _ = Cohort.objects.get_or_create(
+            cohort = Cohort.objects.filter(
                 cohort_name=major.upper(),
                 study_year_id=study_year
-            )
+            ).order_by('id').first()
+            if not cohort:
+                cohort = Cohort.objects.create(
+                    cohort_name=major.upper(),
+                    study_year_id=study_year
+                )
             
     u = UserAccount.objects.create(
         email=email,
@@ -322,10 +327,15 @@ def update_user_level(telegram_id: int, level: str):
             study_year = StudyYear.objects.filter(year_name=code).first()
             if study_year:
                 # Find/get the Cohort matching major ("CS") and study year ("FRESH")
-                cohort, _ = Cohort.objects.get_or_create(
+                cohort = Cohort.objects.filter(
                     cohort_name=major.upper(),
                     study_year_id=study_year
-                )
+                ).order_by('id').first()
+                if not cohort:
+                    cohort = Cohort.objects.create(
+                        cohort_name=major.upper(),
+                        study_year_id=study_year
+                    )
                 u.cohort = cohort
                 u.save()
         u.academic_level = level
@@ -384,10 +394,15 @@ def update_user_major(telegram_id: int, major: str):
         u.major = major.upper()
         # Update cohort to match the new major but retain the same StudyYear
         if u.cohort and u.cohort.study_year_id:
-            cohort, _ = Cohort.objects.get_or_create(
+            cohort = Cohort.objects.filter(
                 cohort_name=major.upper(),
                 study_year_id=u.cohort.study_year_id
-            )
+            ).order_by('id').first()
+            if not cohort:
+                cohort = Cohort.objects.create(
+                    cohort_name=major.upper(),
+                    study_year_id=u.cohort.study_year_id
+                )
             u.cohort = cohort
         u.save()
         return u
@@ -413,10 +428,17 @@ def update_user_major(telegram_id: int, major: str):
 def get_lessons_for_day(level: str, day: str, major: str = None):
     day_code = day_mapping.get(day, day)
     queryset = ClassEvent.objects.filter(event_id__day=day_code)
-    if level:
+    if level and major:
+        code = level_code_map.get(level, level)
+        cohort = Cohort.objects.filter(cohort_name=major.upper(), study_year_id__year_name=code).order_by('id').first()
+        if cohort:
+            queryset = queryset.filter(cohort_id=cohort)
+        else:
+            queryset = queryset.filter(cohort_id__study_year_id__year_name=code, cohort_id__cohort_name=major)
+    elif level:
         code = level_code_map.get(level, level)
         queryset = queryset.filter(cohort_id__study_year_id__year_name=code)
-    if major:
+    elif major:
         queryset = queryset.filter(cohort_id__cohort_name=major)
     entries = queryset.select_related('cohort_id', 'cohort_id__study_year_id', 'subject_id', 'event_id').order_by('event_id__start_time')
     return [LessonWrapper(e) for e in entries]
@@ -425,10 +447,17 @@ def get_lessons_for_day(level: str, day: str, major: str = None):
 @sync_to_async
 def get_weekly_lessons(level: str, major: str = None):
     queryset = ClassEvent.objects.all()
-    if level:
+    if level and major:
+        code = level_code_map.get(level, level)
+        cohort = Cohort.objects.filter(cohort_name=major.upper(), study_year_id__year_name=code).order_by('id').first()
+        if cohort:
+            queryset = queryset.filter(cohort_id=cohort)
+        else:
+            queryset = queryset.filter(cohort_id__study_year_id__year_name=code, cohort_id__cohort_name=major)
+    elif level:
         code = level_code_map.get(level, level)
         queryset = queryset.filter(cohort_id__study_year_id__year_name=code)
-    if major:
+    elif major:
         queryset = queryset.filter(cohort_id__cohort_name=major)
     entries = queryset.select_related('cohort_id', 'cohort_id__study_year_id', 'subject_id', 'event_id').order_by('event_id__day', 'event_id__start_time')
     return [LessonWrapper(e) for e in entries]
@@ -437,7 +466,9 @@ def get_weekly_lessons(level: str, major: str = None):
 @sync_to_async
 def add_lesson(level: str, day: str, time_str: str, subject_name: str):
     study_year, _ = StudyYear.objects.get_or_create(year_name="2025-2026")
-    cohort, _ = Cohort.objects.get_or_create(study_year_id=study_year, cohort_name=level)
+    cohort = Cohort.objects.filter(study_year_id=study_year, cohort_name=level).order_by('id').first()
+    if not cohort:
+        cohort = Cohort.objects.create(study_year_id=study_year, cohort_name=level)
     subject, _ = Subject.objects.get_or_create(name=subject_name.title()[:50])
     instructor, _ = Instructor.objects.get_or_create(
         first_name="TBD", last_name="TBD",
@@ -793,9 +824,17 @@ def delete_reminder(user_id: int, r_type: str, subject: str, day: str, time_str:
 def add_all_lessons_reminders(user_id: int, level: str, offset: int, major: str = None):
     u = UserAccount.objects.get(telegram_id=user_id)
     class_events = ClassEvent.objects.all()
-    if level:
-        class_events = class_events.filter(cohort_id__study_year_id__year_name=level) | class_events.filter(cohort_id__cohort_name=level)
-    if major:
+    if level and major:
+        code = level_code_map.get(level, level)
+        cohort = Cohort.objects.filter(cohort_name=major.upper(), study_year_id__year_name=code).order_by('id').first()
+        if cohort:
+            class_events = class_events.filter(cohort_id=cohort)
+        else:
+            class_events = class_events.filter(cohort_id__study_year_id__year_name=code, cohort_id__cohort_name=major)
+    elif level:
+        code = level_code_map.get(level, level)
+        class_events = class_events.filter(cohort_id__study_year_id__year_name=code)
+    elif major:
         class_events = class_events.filter(cohort_id__cohort_name=major)
     class_events = class_events.select_related('event_id')
     
@@ -817,9 +856,17 @@ def add_all_lessons_reminders(user_id: int, level: str, offset: int, major: str 
 def delete_all_lessons_reminders(user_id: int, level: str, major: str = None):
     u = UserAccount.objects.get(telegram_id=user_id)
     class_events = ClassEvent.objects.all()
-    if level:
-        class_events = class_events.filter(cohort_id__study_year_id__year_name=level) | class_events.filter(cohort_id__cohort_name=level)
-    if major:
+    if level and major:
+        code = level_code_map.get(level, level)
+        cohort = Cohort.objects.filter(cohort_name=major.upper(), study_year_id__year_name=code).order_by('id').first()
+        if cohort:
+            class_events = class_events.filter(cohort_id=cohort)
+        else:
+            class_events = class_events.filter(cohort_id__study_year_id__year_name=code, cohort_id__cohort_name=major)
+    elif level:
+        code = level_code_map.get(level, level)
+        class_events = class_events.filter(cohort_id__study_year_id__year_name=code)
+    elif major:
         class_events = class_events.filter(cohort_id__cohort_name=major)
     class_events = class_events.select_related('event_id')
     event_ids = [ce.event_id.id for ce in class_events if ce.event_id]
