@@ -88,7 +88,8 @@ class GymEvent(models.Model):
     CHOICES = [
         ('MALE', 'Male'),
         ('FEMALE', 'Female'),
-
+        ('CLEANING', 'Cleaning'),
+        ('FACULTY', 'Faculty / Ops'),
     ]
     gender = models.CharField(
         max_length=50, choices=CHOICES, default='MALE')
