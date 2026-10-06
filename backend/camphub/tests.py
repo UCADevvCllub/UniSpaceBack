@@ -180,6 +180,13 @@ class SharedClassTestCase(TestCase):
         self.assertEqual({r.cohort_id_id for r in rows}, {self.soph_cs.id, self.fresh_a.id, self.fresh_b.id})
         self.assertEqual({(r.event_id.day, str(r.event_id.start_time)) for r in rows}, {('WED', '11:00:00')})
 
+    def test_online_room_can_host_overlapping_classes(self):
+        online = Room.objects.create(room_number='Online')
+        other_teacher = Instructor.objects.create(first_name='Grace', last_name='Hopper')
+        self.assertEqual(self.lesson([self.soph_cs.id], room_id=online.id).status_code, 201)
+        resp = self.lesson([self.sen_cs.id], room_id=online.id, instructor_id=other_teacher.id)
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.data)
+
     def test_edit_into_a_clash_is_rejected(self):
         self.lesson([self.soph_cs.id])
         other = self.lesson([self.sen_cs.id], day='TUE',

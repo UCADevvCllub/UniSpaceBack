@@ -37,7 +37,7 @@ def split_shared_events(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('camphub', '0013_classevent_share_group'),
+        ('camphub', '0014_classevent_share_group'),
     ]
 
     operations = [

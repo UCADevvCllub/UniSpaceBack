@@ -4,7 +4,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('camphub', '0012_alter_cohort_cohort_name'),
+        ('camphub', '0013_alter_gymevent_gender'),
     ]
 
     operations = [

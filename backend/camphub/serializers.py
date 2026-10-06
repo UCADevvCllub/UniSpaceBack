@@ -373,7 +373,9 @@ def find_class_clash(day, start_time, end_time, instructor=None, room=None, coho
         if conflict:
             return {"instructor_id": f"Instructor already busy: existing class #{conflict.id} "
                     f"on {conflict.event_id.day} {conflict.event_id.start_time}-{conflict.event_id.end_time}"}
-    if room and overlapping.filter(room_id=room).exists():
+    # Online "rooms" can host any number of classes at once
+    is_online_room = room and "online" in room.room_number.lower()
+    if room and not is_online_room and overlapping.filter(room_id=room).exists():
         return {"room_id": "This room is already booked for another class."}
     if cohorts and overlapping.filter(cohort_id__in=cohorts).exists():
         return {"cohort_id": "This cohort already has a class scheduled at this time."}

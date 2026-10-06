@@ -4,7 +4,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('camphub', '0014_classevent_share_group_data'),
+        ('camphub', '0015_classevent_share_group_data'),
     ]
 
     operations = [
