@@ -125,6 +125,8 @@ DATABASES['logs_db'] = {
     'NAME': BASE_DIR / 'logs.sqlite3',
 }
 
+DATABASE_ROUTERS = ['auth_system.db_router.LogsRouter']
+
 
 # added for redis
 # Caching with Redis
