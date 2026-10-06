@@ -90,7 +90,8 @@ class GymEvent(models.Model):
     CHOICES = [
         ('MALE', 'Male'),
         ('FEMALE', 'Female'),
-
+        ('CLEANING', 'Cleaning'),
+        ('FACULTY', 'Faculty / Ops'),
     ]
     gender = models.CharField(
         max_length=50, choices=CHOICES, default='MALE')
@@ -189,20 +190,24 @@ class ClassEvent(models.Model):
                 cohort_id=self.cohort_id
             )
             if same_year_cohort_conflicts.exists():
-                if self.room_id and conflicts.filter(room_id=self.room_id).exists():
+                
+                is_online_room = self.room_id and "online" in self.room_id.room_number.lower()
+
+                if self.room_id and not is_online_room and conflicts.filter(room_id=self.room_id).exists():
                     raise ValidationError(
                         f"Conflict: Room {self.room_id} already has a {target_status} event during this time."
                     )
 
-                # Instructor Conflict
                 if self.instructor_id and conflicts.filter(instructor_id=self.instructor_id).exists():
                     raise ValidationError(
                         f"Conflict: Instructor {self.instructor_id} is already busy with another {target_status} event."
                     )
-                if conflicts.exists():
+                
+                if not is_online_room and conflicts.exists():
                     raise ValidationError(
                         f"Conflict: The Timeslote at that day is occupied"
                     )
+
 
 
 class MealTime(models.Model):

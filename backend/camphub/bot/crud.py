@@ -1,5 +1,6 @@
 from asgiref.sync import sync_to_async
 from django.db import models
+from django.db.models import Q
 from accounts.models import UserAccount
 from camphub.models import (
     Cohort, Subject, ClassEvent, GymEvent, Event,
@@ -18,46 +19,53 @@ day_reverse = {
     "FRI": "Friday", "SAT": "Saturday", "SUN": "Sunday"
 }
 
-# level_code_map = {
-#     "Freshman": "FRESH",
-#     "Sophomore": "SOPH",
-#     "Junior": "JUN",
-#     "Senior": "SEN",
-#     "FRESH": "FRESH",
-#     "SOPH": "SOPH",
-#     "JUN": "JUN",
-#     "SEN": "SEN"
-# }
+level_code_map = {
+    "Freshman": "FRESH",
+    "Sophomore": "SOPH",
+    "Junior": "JUN",
+    "Senior": "SEN",
+    "FRESH": "FRESH",
+    "SOPH": "SOPH",
+    "JUN": "JUN",
+    "SEN": "SEN"
+}
 
 
-# reverse_level_map = {
-#     "FRESH": "Freshman",
-#     "SOPH": "Sophomore",
-#     "JUN": "Junior",
-#     "SEN": "Senior"
-# }
+reverse_level_map = {
+    "FRESH": "Freshman",
+    "SOPH": "Sophomore",
+    "JUN": "Junior",
+    "SEN": "Senior"
+}
+
+
+
+
+
+
+
 
 
 
 # In camphub/bot/crud.py
 
-level_code_map = {
-    "Freshman": "JUN",      # Map Freshman to "JUN" (since Freshman classes are stored here)
-    "Sophomore": "SOPH",
-    "Junior": "FRESH",      # Map Junior to "FRESH" (since Junior classes are stored here)
-    "Senior": "SEN",
-    "FRESH": "JUN",         # Maintain reverse compatibility
-    "SOPH": "SOPH",
-    "JUN": "FRESH",
-    "SEN": "SEN"
-}
+# level_code_map = {
+#     "Freshman": "JUN",      # Map Freshman to "JUN" (since Freshman classes are stored here)
+#     "Sophomore": "SOPH",
+#     "Junior": "FRESH",      # Map Junior to "FRESH" (since Junior classes are stored here)
+#     "Senior": "SEN",
+#     "FRESH": "JUN",         # Maintain reverse compatibility
+#     "SOPH": "SOPH",
+#     "JUN": "FRESH",
+#     "SEN": "SEN"
+# }
 
-reverse_level_map = {
-    "JUN": "Freshman",      # "JUN" in the DB represents the Freshman display level
-    "SOPH": "Sophomore",
-    "FRESH": "Junior",      # "FRESH" in the DB represents the Junior display level
-    "SEN": "Senior"
-}
+# reverse_level_map = {
+#     "JUN": "Freshman",      # "JUN" in the DB represents the Freshman display level
+#     "SOPH": "Sophomore",
+#     "FRESH": "Junior",      # "FRESH" in the DB represents the Junior display level
+#     "SEN": "Senior"
+# }
 # Compatibility wrappers to mimic SQLAlchemy model objects
 
 
@@ -506,7 +514,9 @@ def get_gym_slots_for_day(day: str, gender: str = None):
     day_code = day_mapping.get(day, day)
     queryset = GymEvent.objects.filter(event_id__day=day_code)
     if gender:
-        queryset = queryset.filter(gender__iexact=gender)
+        queryset = queryset.filter(
+            Q(gender__iexact=gender) | Q(gender__iexact='CLEANING') | Q(gender__iexact='FACULTY')
+        )
     entries = queryset.select_related('event_id').order_by('event_id__start_time')
     return [GymSlotWrapper(e) for e in entries]
 
@@ -515,7 +525,9 @@ def get_gym_slots_for_day(day: str, gender: str = None):
 def get_all_gym_slots(gender: str = None):
     queryset = GymEvent.objects.all()
     if gender:
-        queryset = queryset.filter(gender__iexact=gender)
+        queryset = queryset.filter(
+            Q(gender__iexact=gender) | Q(gender__iexact='CLEANING') | Q(gender__iexact='FACULTY')
+        )
     entries = queryset.select_related('event_id').order_by('event_id__day', 'event_id__start_time')
     return [GymSlotWrapper(e) for e in entries]
 
