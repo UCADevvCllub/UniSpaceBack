@@ -448,12 +448,12 @@ def add_lesson(level: str, day: str, time_str: str, subject_name: str):
     start_dt = datetime.combine(datetime.today(), start_time)
     end_time = (start_dt + timedelta(hours=1, minutes=30)).time()
 
-    # Create the parent Event first, then link ClassEvent to it
-    event, _ = Event.objects.get_or_create(
+    # Each lesson owns its Event, so editing one never moves another
+    event = Event.objects.create(
         day=day_code,
         start_time=start_time,
         end_time=end_time,
-        defaults={"status": "CLASS"}
+        status="CLASS"
     )
     entry, _ = ClassEvent.objects.get_or_create(
         cohort_id=cohort,
