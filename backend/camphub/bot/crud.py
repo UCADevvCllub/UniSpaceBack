@@ -196,16 +196,6 @@ def parse_time_str(t_str):
 # --- User CRUD ---
 
 
-# @sync_to_async
-# def get_user(telegram_id: int):
-#     try:
-#         u = UserAccount.objects.select_related(
-#             'cohort').get(telegram_id=telegram_id)
-#         u.academic_level = u.cohort.cohort_name if u.cohort else None
-#         return u
-#     except UserAccount.DoesNotExist:
-#         return None
-
 @sync_to_async
 def get_user(telegram_id: int):
     try:
@@ -222,31 +212,27 @@ def get_user(telegram_id: int):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # @sync_to_async
 # def create_user(telegram_id: int, name: str = None, gender: str = None, cohort_name: str = None, major: str = None):
 #     email = f"tg_{telegram_id}@unispace.com"
 #     cohort = None
-#     if cohort_name:
-#         study_year, _ = StudyYear.objects.get_or_create(year_name="2025-2026")
-#         cohort, _ = Cohort.objects.get_or_create(cohort_name=cohort_name, defaults={'study_year_id': study_year})
+#     if cohort_name and major:
+#         # 1. Map "Freshman" -> "FRESH"
+#         code = level_code_map.get(cohort_name, cohort_name)
+#         # 2. Find the correct StudyYear row
+#         study_year = StudyYear.objects.filter(year_name=code).first()
+#         if study_year:
+#             # 3. Find/get the cohort matching the Major ("CS") and StudyYear ("FRESH")
+#             cohort = Cohort.objects.filter(
+#                 cohort_name=major.upper(),
+#                 study_year_id=study_year
+#             ).order_by('id').first()
+#             if not cohort:
+#                 cohort = Cohort.objects.create(
+#                     cohort_name=major.upper(),
+#                     study_year_id=study_year
+#                 )
+            
 #     u = UserAccount.objects.create(
 #         email=email,
 #         name=name or "Student",
@@ -260,6 +246,38 @@ def get_user(telegram_id: int):
 
 
 
+
+
+# @sync_to_async
+# def update_user_level(telegram_id: int, level: str):
+#     try:
+#         u = UserAccount.objects.select_related('cohort').get(telegram_id=telegram_id)
+#         major = u.major  # "CS" or "CM"
+#         if major:
+#             # Map "Freshman" -> "FRESH" and find StudyYear row
+#             code = level_code_map.get(level, level)
+#             study_year = StudyYear.objects.filter(year_name=code).first()
+#             if study_year:
+#                 # Find/get the Cohort matching major ("CS") and study year ("FRESH")
+#                 cohort = Cohort.objects.filter(
+#                     cohort_name=major.upper(),
+#                     study_year_id=study_year
+#                 ).order_by('id').first()
+#                 if not cohort:
+#                     cohort = Cohort.objects.create(
+#                         cohort_name=major.upper(),
+#                         study_year_id=study_year
+#                     )
+#                 u.cohort = cohort
+#                 u.save()
+#         u.academic_level = level
+#         return u
+#     except UserAccount.DoesNotExist:
+#         return None
+
+
+
+
 @sync_to_async
 def create_user(telegram_id: int, name: str = None, gender: str = None, cohort_name: str = None, major: str = None):
     email = f"tg_{telegram_id}@unispace.com"
@@ -270,14 +288,23 @@ def create_user(telegram_id: int, name: str = None, gender: str = None, cohort_n
         # 2. Find the correct StudyYear row
         study_year = StudyYear.objects.filter(year_name=code).first()
         if study_year:
-            # 3. Find/get the cohort matching the Major ("CS") and StudyYear ("FRESH")
-            cohort = Cohort.objects.filter(
-                cohort_name=major.upper(),
-                study_year_id=study_year
-            ).order_by('id').first()
-            if not cohort:
-                cohort = Cohort.objects.create(
+            # 3. For CS: Prioritize CS_A, fallback to CS for other years. For others: match major (e.g. CM)
+            if major.upper() == "CS":
+                cohort = (
+                    Cohort.objects.filter(cohort_name="CS_A", study_year_id=study_year).first()
+                    or Cohort.objects.filter(cohort_name="CS", study_year_id=study_year).first()
+                )
+            else:
+                cohort = Cohort.objects.filter(
                     cohort_name=major.upper(),
+                    study_year_id=study_year
+                ).order_by('id').first()
+                
+            # Fallback only if no cohort exists at all in the database
+            if not cohort:
+                target_name = "CS_A" if major.upper() == "CS" else major.upper()
+                cohort = Cohort.objects.create(
+                    cohort_name=target_name,
                     study_year_id=study_year
                 )
             
@@ -293,37 +320,6 @@ def create_user(telegram_id: int, name: str = None, gender: str = None, cohort_n
     return u
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# @sync_to_async
-# def update_user_level(telegram_id: int, level: str):
-#     try:
-#         study_year, _ = StudyYear.objects.get_or_create(year_name="2025-2026")
-#         cohort, _ = Cohort.objects.get_or_create(cohort_name=level, defaults={'study_year_id': study_year})
-#         u = UserAccount.objects.get(telegram_id=telegram_id)
-#         u.cohort = cohort
-#         u.save()
-#         u.academic_level = level
-#         return u
-#     except UserAccount.DoesNotExist:
-#         return None
-
 @sync_to_async
 def update_user_level(telegram_id: int, level: str):
     try:
@@ -334,36 +330,32 @@ def update_user_level(telegram_id: int, level: str):
             code = level_code_map.get(level, level)
             study_year = StudyYear.objects.filter(year_name=code).first()
             if study_year:
-                # Find/get the Cohort matching major ("CS") and study year ("FRESH")
-                cohort = Cohort.objects.filter(
-                    cohort_name=major.upper(),
-                    study_year_id=study_year
-                ).order_by('id').first()
-                if not cohort:
-                    cohort = Cohort.objects.create(
+                # Prioritize CS_A if CS student
+                if major.upper() == "CS":
+                    cohort = (
+                        Cohort.objects.filter(cohort_name="CS_A", study_year_id=study_year).first()
+                        or Cohort.objects.filter(cohort_name="CS", study_year_id=study_year).first()
+                    )
+                else:
+                    cohort = Cohort.objects.filter(
                         cohort_name=major.upper(),
                         study_year_id=study_year
+                    ).order_by('id').first()
+
+                # Fallback only if no cohort exists at all
+                if not cohort:
+                    target_name = "CS_A" if major.upper() == "CS" else major.upper()
+                    cohort = Cohort.objects.create(
+                        cohort_name=target_name,
+                        study_year_id=study_year
                     )
+
                 u.cohort = cohort
                 u.save()
         u.academic_level = level
         return u
     except UserAccount.DoesNotExist:
         return None
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -388,30 +380,46 @@ def update_user_gender(telegram_id: int, gender: str):
 # @sync_to_async
 # def update_user_major(telegram_id: int, major: str):
 #     try:
-#         u = UserAccount.objects.get(telegram_id=telegram_id)
+#         u = UserAccount.objects.select_related('cohort', 'cohort__study_year_id').get(telegram_id=telegram_id)
 #         u.major = major.upper()
+#         # Update cohort to match the new major but retain the same StudyYear
+#         if u.cohort and u.cohort.study_year_id:
+#             cohort = Cohort.objects.filter(
+#                 cohort_name=major.upper(),
+#                 study_year_id=u.cohort.study_year_id
+#             ).order_by('id').first()
+#             if not cohort:
+#                 cohort = Cohort.objects.create(
+#                     cohort_name=major.upper(),
+#                     study_year_id=u.cohort.study_year_id
+#                 )
+#             u.cohort = cohort
 #         u.save()
 #         return u
 #     except UserAccount.DoesNotExist:
 #         return None
+
+
 
 @sync_to_async
 def update_user_major(telegram_id: int, major: str):
     try:
         u = UserAccount.objects.select_related('cohort', 'cohort__study_year_id').get(telegram_id=telegram_id)
         u.major = major.upper()
-        # Update cohort to match the new major but retain the same StudyYear
+        
+        # Update cohort foreign key to match the new major
         if u.cohort and u.cohort.study_year_id:
-            cohort = Cohort.objects.filter(
-                cohort_name=major.upper(),
-                study_year_id=u.cohort.study_year_id
-            ).order_by('id').first()
-            if not cohort:
-                cohort = Cohort.objects.create(
-                    cohort_name=major.upper(),
-                    study_year_id=u.cohort.study_year_id
+            study_year = u.cohort.study_year_id
+            if major.upper() == "CS":
+                cohort = (
+                    Cohort.objects.filter(cohort_name="CS_A", study_year_id=study_year).first()
+                    or Cohort.objects.filter(cohort_name="CS", study_year_id=study_year).first()
                 )
-            u.cohort = cohort
+            else:
+                cohort = Cohort.objects.filter(cohort_name=major.upper(), study_year_id=study_year).first()
+                
+            if cohort:
+                u.cohort = cohort
         u.save()
         return u
     except UserAccount.DoesNotExist:
@@ -427,48 +435,154 @@ def update_user_major(telegram_id: int, major: str):
 
 
 
-
-
-
-
 # --- Lessons CRUD (ClassEvent + Event) ---
+# @sync_to_async
+# def get_lessons_for_day(level: str, day: str, major: str = None):
+#     day_code = day_mapping.get(day, day)
+#     queryset = ClassEvent.objects.filter(event_id__day=day_code)
+#     if level and major:
+#         code = level_code_map.get(level, level)
+#         cohort = Cohort.objects.filter(cohort_name=major.upper(), study_year_id__year_name=code).order_by('id').first()
+#         if cohort:
+#             queryset = queryset.filter(cohort_id=cohort)
+#         else:
+#             queryset = queryset.filter(cohort_id__study_year_id__year_name=code, cohort_id__cohort_name=major)
+#     elif level:
+#         code = level_code_map.get(level, level)
+#         queryset = queryset.filter(cohort_id__study_year_id__year_name=code)
+#     elif major:
+#         queryset = queryset.filter(cohort_id__cohort_name=major)
+#     entries = queryset.select_related('cohort_id', 'cohort_id__study_year_id', 'subject_id', 'event_id').order_by('event_id__start_time')
+#     return [LessonWrapper(e) for e in entries]
+
+
+
+# with CS_A
+
 @sync_to_async
 def get_lessons_for_day(level: str, day: str, major: str = None):
     day_code = day_mapping.get(day, day)
     queryset = ClassEvent.objects.filter(event_id__day=day_code)
+    
     if level and major:
         code = level_code_map.get(level, level)
-        cohort = Cohort.objects.filter(cohort_name=major.upper(), study_year_id__year_name=code).order_by('id').first()
-        if cohort:
-            queryset = queryset.filter(cohort_id=cohort)
+        if major.upper() == "CS":
+            # 1. Prioritize CS_A, fallback to general CS if CS_A doesn't exist
+            cohort = (
+                Cohort.objects.filter(cohort_name="CS_A", study_year_id__year_name=code).first()
+                or Cohort.objects.filter(cohort_name="CS", study_year_id__year_name=code).first()
+            )
+            if cohort:
+                queryset = queryset.filter(cohort_id=cohort)
+            else:
+                queryset = queryset.filter(
+                    cohort_id__study_year_id__year_name=code,
+                    cohort_id__cohort_name__in=["CS_A", "CS"]
+                )
         else:
-            queryset = queryset.filter(cohort_id__study_year_id__year_name=code, cohort_id__cohort_name=major)
+            # Handles CM and other majors
+            cohort = Cohort.objects.filter(cohort_name=major.upper(), study_year_id__year_name=code).order_by('id').first()
+            if cohort:
+                queryset = queryset.filter(cohort_id=cohort)
+            else:
+                queryset = queryset.filter(cohort_id__study_year_id__year_name=code, cohort_id__cohort_name=major)
+
     elif level:
         code = level_code_map.get(level, level)
         queryset = queryset.filter(cohort_id__study_year_id__year_name=code)
+        
     elif major:
-        queryset = queryset.filter(cohort_id__cohort_name=major)
-    entries = queryset.select_related('cohort_id', 'cohort_id__study_year_id', 'subject_id', 'event_id').order_by('event_id__start_time')
+        if major.upper() == "CS":
+            queryset = queryset.filter(cohort_id__cohort_name__in=["CS_A", "CS"])
+        else:
+            queryset = queryset.filter(cohort_id__cohort_name=major)
+
+    entries = queryset.select_related(
+        'cohort_id', 'cohort_id__study_year_id', 'subject_id', 'event_id'
+    ).order_by('event_id__start_time')
+    
     return [LessonWrapper(e) for e in entries]
+
+
+
+
+
+
+
+
+
+
+
+
+# @sync_to_async
+# def get_weekly_lessons(level: str, major: str = None):
+#     queryset = ClassEvent.objects.all()
+#     if level and major:
+#         code = level_code_map.get(level, level)
+#         cohort = Cohort.objects.filter(cohort_name=major.upper(), study_year_id__year_name=code).order_by('id').first()
+#         if cohort:
+#             queryset = queryset.filter(cohort_id=cohort)
+#         else:
+#             queryset = queryset.filter(cohort_id__study_year_id__year_name=code, cohort_id__cohort_name=major)
+#     elif level:
+#         code = level_code_map.get(level, level)
+#         queryset = queryset.filter(cohort_id__study_year_id__year_name=code)
+#     elif major:
+#         queryset = queryset.filter(cohort_id__cohort_name=major)
+#     entries = queryset.select_related('cohort_id', 'cohort_id__study_year_id', 'subject_id', 'event_id').order_by('event_id__day', 'event_id__start_time')
+#     return [LessonWrapper(e) for e in entries]
 
 
 @sync_to_async
 def get_weekly_lessons(level: str, major: str = None):
     queryset = ClassEvent.objects.all()
+    
     if level and major:
         code = level_code_map.get(level, level)
-        cohort = Cohort.objects.filter(cohort_name=major.upper(), study_year_id__year_name=code).order_by('id').first()
-        if cohort:
-            queryset = queryset.filter(cohort_id=cohort)
+        
+        if major.upper() == "CS":
+            # 1. Prioritize CS_A, fallback to CS if CS_A doesn't exist for this year
+            cohort = (
+                Cohort.objects.filter(cohort_name="CS_A", study_year_id__year_name=code).first()
+                or Cohort.objects.filter(cohort_name="CS", study_year_id__year_name=code).first()
+            )
+            if cohort:
+                queryset = queryset.filter(cohort_id=cohort)
+            else:
+                queryset = queryset.filter(
+                    cohort_id__study_year_id__year_name=code,
+                    cohort_id__cohort_name__in=["CS_A", "CS"]
+                )
         else:
-            queryset = queryset.filter(cohort_id__study_year_id__year_name=code, cohort_id__cohort_name=major)
+            # Handles CM or other majors as normal
+            cohort = Cohort.objects.filter(cohort_name=major.upper(), study_year_id__year_name=code).order_by('id').first()
+            if cohort:
+                queryset = queryset.filter(cohort_id=cohort)
+            else:
+                queryset = queryset.filter(cohort_id__study_year_id__year_name=code, cohort_id__cohort_name=major)
+
     elif level:
         code = level_code_map.get(level, level)
         queryset = queryset.filter(cohort_id__study_year_id__year_name=code)
+        
     elif major:
-        queryset = queryset.filter(cohort_id__cohort_name=major)
-    entries = queryset.select_related('cohort_id', 'cohort_id__study_year_id', 'subject_id', 'event_id').order_by('event_id__day', 'event_id__start_time')
+        if major.upper() == "CS":
+            queryset = queryset.filter(cohort_id__cohort_name__in=["CS_A", "CS"])
+        else:
+            queryset = queryset.filter(cohort_id__cohort_name=major)
+
+    entries = queryset.select_related(
+        'cohort_id', 'cohort_id__study_year_id', 'subject_id', 'event_id'
+    ).order_by('event_id__day', 'event_id__start_time')
+    
     return [LessonWrapper(e) for e in entries]
+
+
+
+
+
+
+
 
 
 @sync_to_async
@@ -832,22 +946,102 @@ def delete_reminder(user_id: int, r_type: str, subject: str, day: str, time_str:
     if event:
         Reminder.objects.filter(user_id=u, event_id=event).delete()
 
+
+
+
+
+# @sync_to_async
+# def add_all_lessons_reminders(user_id: int, level: str, offset: int, major: str = None):
+#     u = UserAccount.objects.get(telegram_id=user_id)
+#     class_events = ClassEvent.objects.all()
+#     if level and major:
+#         code = level_code_map.get(level, level)
+#         cohort = Cohort.objects.filter(cohort_name=major.upper(), study_year_id__year_name=code).order_by('id').first()
+#         if cohort:
+#             class_events = class_events.filter(cohort_id=cohort)
+#         else:
+#             class_events = class_events.filter(cohort_id__study_year_id__year_name=code, cohort_id__cohort_name=major)
+#     elif level:
+#         code = level_code_map.get(level, level)
+#         class_events = class_events.filter(cohort_id__study_year_id__year_name=code)
+#     elif major:
+#         class_events = class_events.filter(cohort_id__cohort_name=major)
+#     class_events = class_events.select_related('event_id')
+    
+#     reminders_created = 0
+#     for ce in class_events:
+#         if ce.event_id:
+#             Reminder.objects.filter(user_id=u, event_id=ce.event_id).delete()
+#             time_str = ce.event_id.start_time.strftime("%H:%M")
+#             Reminder.objects.create(
+#                 user_id=u,
+#                 event_time_str=time_str,
+#                 reminder_offset=offset,
+#                 event_id=ce.event_id
+#             )
+#             reminders_created += 1
+#     return reminders_created
+
+# @sync_to_async
+# def delete_all_lessons_reminders(user_id: int, level: str, major: str = None):
+#     u = UserAccount.objects.get(telegram_id=user_id)
+#     class_events = ClassEvent.objects.all()
+#     if level and major:
+#         code = level_code_map.get(level, level)
+#         cohort = Cohort.objects.filter(cohort_name=major.upper(), study_year_id__year_name=code).order_by('id').first()
+#         if cohort:
+#             class_events = class_events.filter(cohort_id=cohort)
+#         else:
+#             class_events = class_events.filter(cohort_id__study_year_id__year_name=code, cohort_id__cohort_name=major)
+#     elif level:
+#         code = level_code_map.get(level, level)
+#         class_events = class_events.filter(cohort_id__study_year_id__year_name=code)
+#     elif major:
+#         class_events = class_events.filter(cohort_id__cohort_name=major)
+#     class_events = class_events.select_related('event_id')
+#     event_ids = [ce.event_id.id for ce in class_events if ce.event_id]
+    
+#     deleted_count, _ = Reminder.objects.filter(user_id=u, event_id_id__in=event_ids).delete()
+#     return deleted_count
+
+
+
 @sync_to_async
 def add_all_lessons_reminders(user_id: int, level: str, offset: int, major: str = None):
     u = UserAccount.objects.get(telegram_id=user_id)
     class_events = ClassEvent.objects.all()
+    
     if level and major:
         code = level_code_map.get(level, level)
-        cohort = Cohort.objects.filter(cohort_name=major.upper(), study_year_id__year_name=code).order_by('id').first()
-        if cohort:
-            class_events = class_events.filter(cohort_id=cohort)
+        if major.upper() == "CS":
+            cohort = (
+                Cohort.objects.filter(cohort_name="CS_A", study_year_id__year_name=code).first()
+                or Cohort.objects.filter(cohort_name="CS", study_year_id__year_name=code).first()
+            )
+            if cohort:
+                class_events = class_events.filter(cohort_id=cohort)
+            else:
+                class_events = class_events.filter(
+                    cohort_id__study_year_id__year_name=code,
+                    cohort_id__cohort_name__in=["CS_A", "CS"]
+                )
         else:
-            class_events = class_events.filter(cohort_id__study_year_id__year_name=code, cohort_id__cohort_name=major)
+            cohort = Cohort.objects.filter(cohort_name=major.upper(), study_year_id__year_name=code).first()
+            if cohort:
+                class_events = class_events.filter(cohort_id=cohort)
+            else:
+                class_events = class_events.filter(cohort_id__study_year_id__year_name=code, cohort_id__cohort_name=major)
+
     elif level:
         code = level_code_map.get(level, level)
         class_events = class_events.filter(cohort_id__study_year_id__year_name=code)
+        
     elif major:
-        class_events = class_events.filter(cohort_id__cohort_name=major)
+        if major.upper() == "CS":
+            class_events = class_events.filter(cohort_id__cohort_name__in=["CS_A", "CS"])
+        else:
+            class_events = class_events.filter(cohort_id__cohort_name=major)
+            
     class_events = class_events.select_related('event_id')
     
     reminders_created = 0
@@ -864,22 +1058,43 @@ def add_all_lessons_reminders(user_id: int, level: str, offset: int, major: str 
             reminders_created += 1
     return reminders_created
 
+
 @sync_to_async
 def delete_all_lessons_reminders(user_id: int, level: str, major: str = None):
     u = UserAccount.objects.get(telegram_id=user_id)
     class_events = ClassEvent.objects.all()
+    
     if level and major:
         code = level_code_map.get(level, level)
-        cohort = Cohort.objects.filter(cohort_name=major.upper(), study_year_id__year_name=code).order_by('id').first()
-        if cohort:
-            class_events = class_events.filter(cohort_id=cohort)
+        if major.upper() == "CS":
+            cohort = (
+                Cohort.objects.filter(cohort_name="CS_A", study_year_id__year_name=code).first()
+                or Cohort.objects.filter(cohort_name="CS", study_year_id__year_name=code).first()
+            )
+            if cohort:
+                class_events = class_events.filter(cohort_id=cohort)
+            else:
+                class_events = class_events.filter(
+                    cohort_id__study_year_id__year_name=code,
+                    cohort_id__cohort_name__in=["CS_A", "CS"]
+                )
         else:
-            class_events = class_events.filter(cohort_id__study_year_id__year_name=code, cohort_id__cohort_name=major)
+            cohort = Cohort.objects.filter(cohort_name=major.upper(), study_year_id__year_name=code).first()
+            if cohort:
+                class_events = class_events.filter(cohort_id=cohort)
+            else:
+                class_events = class_events.filter(cohort_id__study_year_id__year_name=code, cohort_id__cohort_name=major)
+
     elif level:
         code = level_code_map.get(level, level)
         class_events = class_events.filter(cohort_id__study_year_id__year_name=code)
+        
     elif major:
-        class_events = class_events.filter(cohort_id__cohort_name=major)
+        if major.upper() == "CS":
+            class_events = class_events.filter(cohort_id__cohort_name__in=["CS_A", "CS"])
+        else:
+            class_events = class_events.filter(cohort_id__cohort_name=major)
+            
     class_events = class_events.select_related('event_id')
     event_ids = [ce.event_id.id for ce in class_events if ce.event_id]
     
