@@ -152,8 +152,16 @@ class ClassEvent(models.Model):
         Event, on_delete=models.CASCADE, null=True, blank=True, db_column='event_id')
     room_id = models.ForeignKey(
         Room, on_delete=models.CASCADE, null=True, blank=True, db_column='room_id')
-    linked_event_id = models.ForeignKey(
-        'self', on_delete=models.CASCADE, null=True, blank=True, db_column='linked_event_id', related_name='+')
+    # Rows sharing a share_group are one class taught to several cohorts at once
+    # (e.g. CS+CM, or Sophomore CS + Senior CS). They share one Event, are edited and
+    # deleted together, and never count as clashing with each other.
+    share_group = models.UUIDField(null=True, blank=True, db_index=True)
+
+    def group_members(self):
+        """Every row of this shared class, including this one."""
+        if self.share_group:
+            return ClassEvent.objects.filter(share_group=self.share_group)
+        return ClassEvent.objects.filter(pk=self.pk)
 
     def __str__(self):
         subject = str(self.subject_id) if self.subject_id else "No Subject"
@@ -182,6 +190,8 @@ class ClassEvent(models.Model):
 
         if self.pk:
             conflicts = conflicts.exclude(pk=self.pk)
+        if self.share_group:
+            conflicts = conflicts.exclude(share_group=self.share_group)
 
         if self.cohort_id and self.cohort_id.study_year_id:
             current_study_year = self.cohort_id.study_year_id
