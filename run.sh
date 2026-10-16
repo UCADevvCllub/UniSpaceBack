@@ -4,6 +4,18 @@
 cd backend
 
 # Apply any database migrations
+echo "Ensuring linked_event_id column exists..."
+python -c "
+import django, os
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'auth_system.settings')
+django.setup()
+from django.db import connection
+if connection.vendor == 'postgresql':
+    with connection.cursor() as cursor:
+        cursor.execute('ALTER TABLE camphub_classevent ADD COLUMN IF NOT EXISTS linked_event_id bigint NULL CONSTRAINT camphub_classevent_linked_event_id_fk REFERENCES camphub_classevent(id) DEFERRABLE INITIALLY DEFERRED;')
+        print('Successfully checked/created linked_event_id column in PostgreSQL!')
+"
+
 echo "Applying database migrations..."
 python manage.py migrate --noinput
 
