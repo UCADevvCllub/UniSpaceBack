@@ -397,7 +397,7 @@ class ClassEventSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'subject_id', 'instructor_id', 'cohort_id', 'event_id', 'room_id', 'event_data',
             'cohort_ids', 'subject_detail', 'instructor_detail', 'cohort_detail', 'room_detail',
-            'event_detail', 'share_group'
+            'event_detail', 'share_group', 'sub_category'
         ]
         read_only_fields = ['event_id']
 

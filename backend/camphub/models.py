@@ -46,6 +46,7 @@ class Subject(models.Model):
 class Cohort(models.Model):
     study_year_id = models.ForeignKey(
         StudyYear, on_delete=models.CASCADE, null=True, blank=True, db_column='study_year_id')
+    
     CHOICES = [
         ('CM_A', 'CM_A'),
         ('CM_B', 'CM_B'),
@@ -53,9 +54,10 @@ class Cohort(models.Model):
         ('CS_B', 'CS_B'),
         ('CM', 'CM'),
         ('CS', 'CS'),
+        ('CS_DIRECT', 'CS Direct'),
+        ('POST_PREP', 'Post Prep'),
     ]
-    study_year_id = models.ForeignKey(
-        StudyYear, on_delete=models.CASCADE, null=True, blank=True, db_column='study_year_id')
+
     cohort_name = models.CharField(max_length=50, choices=CHOICES)
 
     def __str__(self):
@@ -141,7 +143,10 @@ class Instructor(models.Model):
 
 
 class ClassEvent(models.Model):
-
+    SUB_CATEGORY_CHOICES = [
+        ('CS A', 'CS A'),
+        ('CS Direct', 'CS Direct'),
+    ]
     subject_id = models.ForeignKey(
         Subject, on_delete=models.CASCADE, null=True, blank=True, db_column='subject_id')
     instructor_id = models.ForeignKey(
@@ -156,6 +161,13 @@ class ClassEvent(models.Model):
     # (e.g. CS+CM, or Sophomore CS + Senior CS). They share one Event, are edited and
     # deleted together, and never count as clashing with each other.
     share_group = models.UUIDField(null=True, blank=True, db_index=True)
+    sub_category = models.CharField(
+        max_length=50,
+        choices=SUB_CATEGORY_CHOICES,
+        blank=True,
+        null=True,
+        help_text="Optional sub-category (e.g., CS A or CS Direct for Freshmen)"
+    )
 
     def group_members(self):
         """Every row of this shared class, including this one."""
