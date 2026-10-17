@@ -115,7 +115,59 @@ class ClassEventViewSet(viewsets.ModelViewSet):
     queryset =ClassEvent.objects.all()
     serializer_class = ClassEventSerializer
 
+    def get_queryset(self):
+        # Start with all ClassEvents and optimize queries
+        queryset = ClassEvent.objects.select_related(
+            'event_id', 'subject_id', 'instructor_id',
+            'cohort_id', 'cohort_id__study_year_id', 'room_id'
+        ).all()
 
+        # Extract optional query parameters from request URL
+        study_year = self.request.query_params.get('study_year')
+        sub_category = self.request.query_params.get('sub_category')
+        course = self.request.query_params.get('course')
+        day = self.request.query_params.get('day')
+
+        # Apply study_year filter if passed
+        if study_year:
+            if study_year.isdigit():
+                queryset = queryset.filter(cohort_id__study_year_id_id=int(study_year))
+            else:
+                year_map = {
+                    'FRESHMAN': 'FRESH', 'FRESH': 'FRESH', 'FESH': 'FESH',
+                    'SOPHOMORE': 'SOPH', 'SOPH': 'SOPH', 'SOF': 'SOPH',
+                    'JUNIOR': 'JUN', 'JUN': 'JUN',
+                    'SENIOR': 'SEN', 'SEN': 'SEN'
+                }
+                code = year_map.get(study_year.strip().upper(), study_year)
+                queryset = queryset.filter(
+                    Q(cohort_id__study_year_id__year_name__iexact=code) |
+                    (Q(cohort_id__study_year_id__year_name__iexact='FESH') if code == 'FRESH' else Q())
+                )
+
+        # Apply course/cohort/subject filter if passed
+        if course:
+            if course.isdigit():
+                queryset = queryset.filter(Q(cohort_id_id=int(course)) | Q(subject_id_id=int(course)))
+            else:
+                queryset = queryset.filter(
+                    Q(cohort_id__cohort_name__iexact=course) |
+                    Q(subject_id__name__icontains=course)
+                )
+
+        # Apply day filter if passed
+        if day:
+            queryset = queryset.filter(event_id__day=day.upper())
+
+        # Apply sub_category filter ONLY if explicitly requested
+        if sub_category:
+            queryset = queryset.filter(
+                Q(sub_category__iexact=sub_category) |
+                Q(sub_category__isnull=True) |
+                Q(sub_category='')
+            )
+
+        return queryset
     # permission_classes = [permissions.IsAdminUser]
 
     def get_permissions(self):
