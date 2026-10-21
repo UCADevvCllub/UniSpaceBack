@@ -56,6 +56,7 @@ class Cohort(models.Model):
         ('CS', 'CS'),
         ('CS_DIRECT', 'CS Direct'),
         ('POST_PREP', 'Post Prep'),
+        ('CM_DIRECT', 'CM Direct'),
     ]
 
     cohort_name = models.CharField(max_length=50, choices=CHOICES)
