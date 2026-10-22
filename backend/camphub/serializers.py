@@ -369,16 +369,34 @@ def find_class_clash(day, start_time, end_time, instructor=None, room=None, coho
     ).exclude(id__in=exclude_ids).select_related('event_id')
 
     if instructor:
-        conflict = overlapping.filter(instructor_id=instructor).first()
+        conflict = overlapping.filter(instructor_id=instructor).select_related('instructor_id', 'subject_id', 'event_id').first()
         if conflict:
-            return {"instructor_id": f"Instructor already busy: existing class #{conflict.id} "
-                    f"on {conflict.event_id.day} {conflict.event_id.start_time}-{conflict.event_id.end_time}"}
+            subj = f" ({conflict.subject_id.name})" if conflict.subject_id else ""
+            return {"instructor_id": f"Conflict: Instructor {conflict.instructor_id.first_name} {conflict.instructor_id.last_name} is already busy with another class{subj}."}
     # Online "rooms" can host any number of classes at once
     is_online_room = room and "online" in room.room_number.lower()
-    if room and not is_online_room and overlapping.filter(room_id=room).exists():
-        return {"room_id": "This room is already booked for another class."}
-    if cohorts and overlapping.filter(cohort_id__in=cohorts).exists():
-        return {"cohort_id": "This cohort already has a class scheduled at this time."}
+    if room and not is_online_room:
+        conflict = overlapping.filter(room_id=room).select_related('room_id', 'subject_id').first()
+        if conflict:
+            subj = f" ({conflict.subject_id.name})" if conflict.subject_id else ""
+            return {"room_id": f"Conflict: Room {room.room_number} is already booked for another class{subj}."}
+
+    if cohorts:
+        conflict = overlapping.filter(cohort_id__in=cohorts).select_related(
+            'cohort_id', 'cohort_id__study_year_id', 'subject_id'
+        ).first()
+        if conflict and conflict.cohort_id:
+            raw_year = conflict.cohort_id.study_year_id.year_name if conflict.cohort_id.study_year_id else ""
+            year_label_map = {
+                'FRESH': 'Freshman', 'FESH': 'Freshman',
+                'SOPH': 'Sophomore',
+                'JUN': 'Junior',
+                'SEN': 'Senior'
+            }
+            year_display = year_label_map.get(raw_year.upper(), raw_year) if raw_year else "Unknown Year"
+            cohort_display = conflict.cohort_id.cohort_name.replace('_', ' ')
+            subj = f" ({conflict.subject_id.name})" if conflict.subject_id else ""
+            return {"cohort_id": f"Conflict: {year_display} {cohort_display} already has a class scheduled at this time{subj}."}
     return None
 
 
