@@ -351,30 +351,67 @@ class GymEventSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
 
+YEAR_LABELS = {'FRESH': 'Freshman', 'FESH': 'Freshman', 'SOPH': 'Sophomore', 'JUN': 'Junior', 'SEN': 'Senior'}
+FRESHMAN_COHORTS = {'CS_A', 'CS_B', 'CS_DIRECT', 'POST_PREP', 'CM', 'CM_DIRECT'}
+OTHER_YEAR_COHORTS = {'CS', 'CM'}
+
+
+def year_code(cohort):
+    return cohort.study_year_id.year_name if cohort and cohort.study_year_id else ''
+
+
+def cohort_label(cohort):
+    """e.g. "Junior CM" or "Freshman CS A"."""
+    if cohort is None:
+        return "No cohort"
+    year = YEAR_LABELS.get(year_code(cohort).upper(), year_code(cohort))
+    return f"{year} {cohort.get_cohort_name_display().replace('_', ' ')}".strip()
+
+
+def lesson_label(lesson):
+    """e.g. "Physics (MON 09:00-10:30)"."""
+    subject = lesson.subject_id.name if lesson.subject_id else "another class"
+    event = lesson.event_id
+    return f"{subject} ({event.day} {event.start_time:%H:%M}-{event.end_time:%H:%M})"
+
+
 def find_class_clash(day, start_time, end_time, instructor=None, room=None, cohorts=(), exclude_ids=()):
-    """Returns a {field: message} error for the first clash with an existing lesson, else None.
+    """Returns every clash with an existing lesson as {field: [messages]}, else None.
 
     Lessons in exclude_ids (the lesson's own share group) never clash with it.
     """
-    overlapping = ClassEvent.objects.filter(
+    overlapping = list(ClassEvent.objects.filter(
         event_id__day=day,
         event_id__status='CLASS',
         event_id__start_time__lt=end_time,
         event_id__end_time__gt=start_time,
-    ).exclude(id__in=exclude_ids).select_related('event_id')
+    ).exclude(id__in=exclude_ids).select_related(
+        'event_id', 'subject_id', 'instructor_id', 'room_id', 'cohort_id', 'cohort_id__study_year_id'
+    ).order_by('event_id__start_time', 'id'))
 
+    def by_class(lessons):
+        """A shared class is one row per cohort; report it once, naming all its cohorts."""
+        classes = {}
+        for lesson in lessons:
+            classes.setdefault(lesson.share_group or lesson.event_id_id, []).append(lesson)
+        return [(rows[0], ", ".join(cohort_label(r.cohort_id) for r in rows)) for rows in classes.values()]
+
+    errors = {}
     if instructor:
-        conflict = overlapping.filter(instructor_id=instructor).first()
-        if conflict:
-            return {"instructor_id": f"Instructor already busy: existing class #{conflict.id} "
-                    f"on {conflict.event_id.day} {conflict.event_id.start_time}-{conflict.event_id.end_time}"}
+        for lesson, taught_to in by_class(l for l in overlapping if l.instructor_id_id == instructor.id):
+            errors.setdefault("instructor_id", []).append(
+                f"Instructor {instructor}: already teaching {lesson_label(lesson)} for {taught_to}.")
     # Online "rooms" can host any number of classes at once
     is_online_room = room and "online" in room.room_number.lower()
-    if room and not is_online_room and overlapping.filter(room_id=room).exists():
-        return {"room_id": "This room is already booked for another class."}
-    if cohorts and overlapping.filter(cohort_id__in=cohorts).exists():
-        return {"cohort_id": "This cohort already has a class scheduled at this time."}
-    return None
+    if room and not is_online_room:
+        for lesson, taught_to in by_class(l for l in overlapping if l.room_id_id == room.id):
+            errors.setdefault("room_id", []).append(
+                f"Room {room.room_number}: already booked for {lesson_label(lesson)} ({taught_to}).")
+    for cohort in cohorts:
+        for lesson in (l for l in overlapping if l.cohort_id_id == cohort.id):
+            errors.setdefault("cohort_id", []).append(
+                f"{cohort_label(cohort)}: already has {lesson_label(lesson)}.")
+    return errors or None
 
 
 class ClassEventSerializer(serializers.ModelSerializer):
@@ -390,13 +427,16 @@ class ClassEventSerializer(serializers.ModelSerializer):
     # per cohort, all in the same share_group. On update it replaces the group's cohorts.
     cohort_ids = serializers.PrimaryKeyRelatedField(
         queryset=Cohort.objects.all(), many=True, write_only=True, required=False)
+    # On update: move only this study year's copy of a shared class (drag / resize in the
+    # calendar). It splits off into its own lesson; the other years stay where they are.
+    detach = serializers.BooleanField(write_only=True, required=False, default=False)
 
     class Meta:
         model = ClassEvent
 
         fields = [
             'id', 'subject_id', 'instructor_id', 'cohort_id', 'event_id', 'room_id', 'event_data',
-            'cohort_ids', 'subject_detail', 'instructor_detail', 'cohort_detail', 'room_detail',
+            'cohort_ids', 'detach', 'subject_detail', 'instructor_detail', 'cohort_detail', 'room_detail',
             'event_detail', 'share_group', 'sub_category'
         ]
         read_only_fields = ['event_id']
@@ -407,10 +447,23 @@ class ClassEventSerializer(serializers.ModelSerializer):
         end = event_data.get('end_time') or (self.instance and self.instance.event_id and self.instance.event_id.end_time)
         if start and end and end <= start:
             raise serializers.ValidationError({"end_time": "End time must be after start time."})
+
+        # Freshman has its own sections; every other year is only CS or CM.
+        picked = list(attrs.get('cohort_ids') or []) + [c for c in [attrs.get('cohort_id')] if c]
+        invalid = [
+            cohort_label(c) for c in picked
+            if c.cohort_name not in (FRESHMAN_COHORTS if year_code(c).upper() in ('FRESH', 'FESH') else OTHER_YEAR_COHORTS)
+        ]
+        if invalid:
+            raise serializers.ValidationError({"cohort_ids": [
+                f"{label} is not a cohort lessons can be given to. Freshman: CS A, CS B, CS Direct, "
+                f"Post Prep, CM, CM Direct. Other years: CS or CM." for label in invalid
+            ]})
         return attrs
 
     def create(self, validated_data):
         event_data = validated_data.pop('event_data')
+        validated_data.pop('detach', None)
         cohorts = list(dict.fromkeys(validated_data.pop('cohort_ids', None) or [validated_data.get('cohort_id')]))
         cohorts = [c for c in cohorts if c is not None]
 
@@ -441,9 +494,18 @@ class ClassEventSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         event_data = validated_data.pop('event_data', None) or {}
         new_cohorts = validated_data.pop('cohort_ids', None)
+        detach = validated_data.pop('detach', False)
 
-        members = list(instance.group_members())
+        members = list(instance.group_members().select_related('cohort_id__study_year_id'))
+        # Every row of the class, including any that stay behind on a detach; they never
+        # clash with the copy being moved, since they are the same class.
         member_ids = [m.id for m in members]
+        left_behind = []
+        if detach:
+            this_year = year_code(instance.cohort_id)
+            left_behind = [m for m in members if year_code(m.cohort_id) != this_year]
+            members = [m for m in members if year_code(m.cohort_id) == this_year]
+            new_cohorts = None
         if 'cohort_id' in validated_data:
             instance.cohort_id = validated_data.pop('cohort_id')
         if new_cohorts is None:
@@ -455,7 +517,8 @@ class ClassEventSerializer(serializers.ModelSerializer):
         day = event_data.get('day', event.day if event else 'MON')
         start_time = event_data.get('start_time', event.start_time if event else None)
         end_time = event_data.get('end_time', event.end_time if event else None)
-        shared = {f: validated_data.get(f, getattr(instance, f)) for f in ('subject_id', 'instructor_id', 'room_id')}
+        shared = {f: validated_data.get(f, getattr(instance, f))
+                  for f in ('subject_id', 'instructor_id', 'room_id', 'sub_category')}
 
         clash = find_class_clash(
             day, start_time, end_time,
@@ -467,12 +530,19 @@ class ClassEventSerializer(serializers.ModelSerializer):
 
         with transaction.atomic():
             # Older rows may still share an Event with unrelated lessons; detach first.
-            if event is None or ClassEvent.objects.filter(event_id=event).exclude(id__in=member_ids).exists():
+            moving_ids = [m.id for m in members]
+            if event is None or ClassEvent.objects.filter(event_id=event).exclude(id__in=moving_ids).exists():
                 event = Event(status='CLASS')
             event.day, event.start_time, event.end_time = day, start_time, end_time
             event.save()
 
-            group = (instance.share_group or uuid.uuid4()) if len(new_cohorts) > 1 else None
+            if left_behind:
+                # The copy that moved becomes its own class; the rest keep their group.
+                group = uuid.uuid4() if len(new_cohorts) > 1 else None
+                if len(left_behind) == 1:
+                    ClassEvent.objects.filter(id=left_behind[0].id).update(share_group=None)
+            else:
+                group = (instance.share_group or uuid.uuid4()) if len(new_cohorts) > 1 else None
             keep = {}
             # The edited row goes first so it survives whenever its cohort is still wanted.
             for m in sorted(members, key=lambda m: m.id != instance.id):
