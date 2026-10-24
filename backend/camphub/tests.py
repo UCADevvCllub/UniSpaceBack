@@ -126,6 +126,9 @@ class SharedClassTestCase(TestCase):
         self.sen_cs = Cohort.objects.create(cohort_name='CS', study_year_id=years['SEN'])
         self.fresh_a = Cohort.objects.create(cohort_name='CS_A', study_year_id=years['FRESH'])
         self.fresh_b = Cohort.objects.create(cohort_name='CS_B', study_year_id=years['FRESH'])
+        self.jun_cm = Cohort.objects.create(cohort_name='CM', study_year_id=years['JUN'])
+        self.sen_cm = Cohort.objects.create(cohort_name='CM', study_year_id=years['SEN'])
+        self.sen_cs_a = Cohort.objects.create(cohort_name='CS_A', study_year_id=years['SEN'])
         self.subject = Subject.objects.create(name='Data Structures')
         self.teacher = Instructor.objects.create(first_name='Ada', last_name='Lovelace')
         self.room = Room.objects.create(room_number='204')
@@ -213,3 +216,67 @@ class SharedClassTestCase(TestCase):
         }, format='json')
         self.assertEqual(resp.status_code, 201, resp.data)
         self.assertEqual(len(resp.data), 2)
+
+    def test_each_year_can_take_a_different_major(self):
+        resp = self.lesson([self.fresh_a.id, self.fresh_b.id, self.jun_cm.id, self.sen_cs.id, self.sen_cm.id])
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.data)
+        rows = ClassEvent.objects.filter(share_group=resp.data['share_group'])
+        self.assertEqual({r.cohort_id_id for r in rows},
+                         {self.fresh_a.id, self.fresh_b.id, self.jun_cm.id, self.sen_cs.id, self.sen_cm.id})
+        self.assertEqual(len({r.event_id_id for r in rows}), 1)
+
+    def test_every_clash_is_listed_with_its_year_and_cohort(self):
+        other_teacher = Instructor.objects.create(first_name='Alan', last_name='Turing')
+        other_room = Room.objects.create(room_number='301')
+        self.assertEqual(self.lesson([self.jun_cm.id, self.sen_cm.id]).status_code, 201)
+        self.assertEqual(self.lesson([self.soph_cs.id], instructor_id=other_teacher.id,
+                                     room_id=other_room.id).status_code, 201)
+
+        resp = self.lesson([self.jun_cm.id, self.soph_cs.id, self.fresh_a.id], start='10:00:00', end='11:00:00')
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(len(resp.data['cohort_id']), 2)
+        self.assertTrue(any(m.startswith('Junior CM') for m in resp.data['cohort_id']))
+        self.assertTrue(any(m.startswith('Sophomore CS') for m in resp.data['cohort_id']))
+        # The shared Junior+Senior class is reported once for the teacher and the room
+        self.assertEqual(len(resp.data['instructor_id']), 1)
+        self.assertIn('Junior CM, Senior CM', resp.data['instructor_id'][0])
+        self.assertEqual(len(resp.data['room_id']), 1)
+        self.assertEqual(ClassEvent.objects.count(), 3)
+
+    def test_other_years_only_accept_cs_or_cm(self):
+        resp = self.lesson([self.sen_cs_a.id])
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Senior CS A', resp.data['cohort_ids'][0])
+
+    def test_detach_moves_only_this_years_copy(self):
+        resp = self.lesson([self.soph_cs.id, self.soph_cm.id, self.sen_cs.id])
+        group = resp.data['share_group']
+        soph_row = ClassEvent.objects.get(share_group=group, cohort_id=self.soph_cs)
+        resp = self.client.patch(f"/api/class-events/{soph_row.id}/", {
+            'detach': True,
+            'event_data': {'day': 'TUE', 'start_time': '09:00:00', 'end_time': '10:30:00'},
+        }, format='json')
+        self.assertEqual(resp.status_code, 200, resp.data)
+
+        senior = ClassEvent.objects.select_related('event_id').get(cohort_id=self.sen_cs)
+        self.assertEqual((senior.event_id.day, senior.share_group), ('MON', None))
+        moved = ClassEvent.objects.filter(cohort_id__in=[self.soph_cs, self.soph_cm]).select_related('event_id')
+        self.assertEqual({r.event_id.day for r in moved}, {'TUE'})
+        self.assertEqual(len({r.share_group for r in moved}), 1)
+        self.assertNotEqual(moved[0].share_group, None)
+        self.assertNotEqual(str(moved[0].share_group), group)
+
+    def test_resizing_one_years_copy_does_not_clash_with_the_rest(self):
+        resp = self.lesson([self.soph_cs.id, self.sen_cs.id])
+        resp = self.client.patch(f"/api/class-events/{resp.data['id']}/", {
+            'detach': True,
+            'event_data': {'day': 'MON', 'start_time': '09:00:00', 'end_time': '11:00:00'},
+        }, format='json')
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertEqual(ClassEvent.objects.count(), 2)
+
+    def test_editing_updates_sub_category(self):
+        resp = self.lesson([self.fresh_a.id])
+        resp = self.client.patch(f"/api/class-events/{resp.data['id']}/", {'sub_category': 'CS A'}, format='json')
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertEqual(ClassEvent.objects.get().sub_category, 'CS A')
