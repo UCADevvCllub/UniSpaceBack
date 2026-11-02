@@ -45,6 +45,20 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     ]
     major = models.CharField(max_length=10, choices=MAJOR_CHOICES, null=True, blank=True)
 
+    # Freshman CS only — Group × Track = 4 schedules (CS_A/CS_B × Direct/Post Prep)
+    CS_GROUP_CHOICES = [
+        ('CS_A', 'CS A'),
+        ('CS_B', 'CS B'),
+    ]
+    CS_TRACK_CHOICES = [
+        ('CS_DIRECT', 'Direct'),
+        ('POST_PREP', 'Post Prep'),
+    ]
+    cs_group = models.CharField(
+        max_length=10, choices=CS_GROUP_CHOICES, null=True, blank=True)
+    cs_track = models.CharField(
+        max_length=15, choices=CS_TRACK_CHOICES, null=True, blank=True)
+
     cohort = models.ForeignKey(
         "camphub.Cohort", on_delete=models.SET_NULL, null=True, blank=True)
     objects = UserAccountManager()

@@ -2,9 +2,12 @@ from aiogram import Router, F
 from aiogram.types import Message
 from datetime import datetime
 
-from ..crud import get_user, get_lessons_for_day, get_tv_bookings, get_user_reminders
+from ..crud import get_user, get_lessons_for_day, get_user_reminders, needs_freshman_prefs
+from ..format import header, card, compose, empty, section, profile_meta
+from ..keyboards.inline import get_freshman_group_kb
 
 router = Router()
+
 
 @router.message(F.text == "📅 My Day")
 async def my_day_summary(message: Message):
@@ -16,48 +19,65 @@ async def my_day_summary(message: Message):
         await message.answer("Please set your academic level first (/start)")
         return
 
-    lessons = await get_lessons_for_day(user.academic_level, today_name, major=getattr(user, 'major', None))
+    if needs_freshman_prefs(user):
+        await message.answer(
+            header(
+                "👥",
+                "Choose your Freshman schedule",
+                "Group (CS A / CS B) and Track (Direct / Post Prep) are required.",
+                "Select your group first:",
+            ),
+            reply_markup=get_freshman_group_kb(),
+            parse_mode="HTML",
+        )
+        return
+
+    lessons = await get_lessons_for_day(
+        user.academic_level,
+        today_name,
+        major=getattr(user, "major", None),
+        cs_group=getattr(user, "cs_group", None),
+        cs_track=getattr(user, "cs_track", None),
+    )
     reminders = await get_user_reminders(message.from_user.id)
-    tv_bookings = await get_tv_bookings(message.from_user.id)
 
-    today_tv_bookings = [b for b in tv_bookings if b.booking_date == today_date_str]
-
-    text = (
-        f"📅 **My Day Overview ({today_name}, {today_date_str})**\n"
-        f"━━━━━━━━━━━━━━━━━━━━━\n\n"
+    hdr = header(
+        "📅",
+        "My Day",
+        profile_meta(user),
+        f"📅 {today_name}, {today_date_str}",
     )
 
-    text += "📚 **Today's Lessons:**\n"
+    parts = [section("📚", "Lessons")]
     if lessons:
         for l in lessons:
             has_rem = any(
-                r.reminder_type == "lesson" and
-                r.subject_name == l.subject_name and
-                r.day == today_name and
-                r.event_time_str == l.start_time_str
+                r.reminder_type == "lesson"
+                and r.subject_name == l.subject_name
+                and r.day == today_name
+                and r.event_time_str == l.start_time_str
                 for r in reminders
             )
-            rem_suffix = " ⏰" if has_rem else ""
-            text += f"   • {l.time_str} - {l.subject_name}{rem_suffix}\n"
+            parts.append(
+                card(
+                    l.time_str,
+                    l.subject_name,
+                    status="⏰ Reminder on" if has_rem else None,
+                )
+            )
     else:
-        text += "   • No lessons scheduled for today.\n"
-    text += "\n"
+        parts.append(empty("🎉 Free day — no lessons."))
 
-    today_sports_reminders = [r for r in reminders if r.day == today_name and r.reminder_type in ["gym", "bubble"]]
-    text += "🏋️ **Sports & Gym Reminders:**\n"
-    if today_sports_reminders:
-        for r in today_sports_reminders:
+    today_sports = [
+        r for r in reminders
+        if r.day == today_name and r.reminder_type in ["gym", "bubble"]
+    ]
+    parts.append(section("🏋️", "Sports & Gym"))
+    if today_sports:
+        for r in today_sports:
             icon = "🏋️" if r.reminder_type == "gym" else "🏀"
-            text += f"   • {icon} {r.event_time_str} - {r.subject_name}\n"
+            parts.append(card(r.event_time_str, f"{icon} {r.subject_name}"))
     else:
-        text += "   • No sports sessions scheduled for today.\n"
-    text += "\n"
+        parts.append(empty("No sports reminders for today."))
 
-    text += "📺 **Today's TV Lounge Bookings:**\n"
-    if today_tv_bookings:
-        for b in today_tv_bookings:
-            text += f"   • {b.booking_time} - Lounge {b.lounge_name} (Booker: {b.booker_name})\n"
-    else:
-        text += "   • You booked nothing for today.\n"
-
-    await message.answer(text, parse_mode="Markdown")
+    await message.answer(compose(hdr, *parts), parse_mode="HTML")

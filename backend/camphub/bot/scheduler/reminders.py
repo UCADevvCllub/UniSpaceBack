@@ -10,39 +10,42 @@ async def check_reminders(bot: Bot):
     now = datetime.now()
     current_day = now.strftime("%A")
     current_date = now.strftime("%d.%m")
-    
+
     logger.info(f"Checking reminders at {now.strftime('%H:%M')} on {current_day} ({current_date})")
-    
+
     reminders = await get_all_reminders()
-    
+
     if not reminders:
         logger.info("No reminders found in database.")
         return
-    
+
     logger.info(f"Found {len(reminders)} total reminder(s) in database.")
-    
+
     for r in reminders:
-        # Lesson/Gym/Bubble reminders check the weekday name
-        if r.reminder_type in ["lesson", "gym", "bubble"]:
+        # TV Lounges is disabled ("coming soon") — never send TV reminders.
+        if r.reminder_type == "tv":
+            continue
+
+        # Weekday-based reminders (lessons, gym, bubble, meals)
+        if r.reminder_type in ["lesson", "gym", "bubble", "meal"]:
             if r.day != current_day:
                 continue
-        # TV lounge reminders check the date (e.g. "16.06")
-        elif r.reminder_type == "tv":
-            if r.day != current_date:
-                continue
-            
+        elif r.reminder_type == "unknown":
+            continue
+
         try:
+            if not r.event_time_str:
+                continue
             event_time = datetime.strptime(r.event_time_str, "%H:%M").time()
             event_datetime = datetime.combine(now.date(), event_time)
             trigger_time = event_datetime - timedelta(minutes=r.reminder_offset)
-            
+
             logger.info(
                 f"  Reminder [{r.reminder_type}] '{r.subject_name}' on {r.day}: "
                 f"event at {r.event_time_str}, trigger at {trigger_time.strftime('%H:%M')}, "
                 f"now is {now.strftime('%H:%M')}"
             )
-            
-            # Check if it is the exact minute
+
             if trigger_time.hour == now.hour and trigger_time.minute == now.minute:
                 if r.reminder_type == "lesson":
                     msg = (
@@ -65,14 +68,20 @@ async def check_reminders(bot: Bot):
                         f"⏰ Session time: {r.event_time_str}\n\n"
                         f"Get your gear ready! 🏃"
                     )
-                else:
+                elif r.reminder_type == "meal":
                     msg = (
-                        f"📺 <b>TV Lounge Reminder!</b>\n\n"
-                        f"🎬 Your booking at <b>{r.subject_name}</b> starts in <b>{r.reminder_offset} minutes</b>!\n"
-                        f"⏰ Booking time: {r.event_time_str}\n\n"
-                        f"Enjoy! 🍿"
+                        f"🍽 <b>Meal Reminder!</b>\n\n"
+                        f"🥣 <b>{r.subject_name}</b> starts in <b>{r.reminder_offset} minutes</b>!\n"
+                        f"⏰ Time: {r.event_time_str}\n\n"
+                        f"Don't miss it! 😋"
                     )
-                    
+                else:
+                    continue
+
+                if not r.telegram_user_id:
+                    logger.warning(f"  Reminder {r.id} has no telegram_user_id — skip")
+                    continue
+
                 logger.info(f"  >>> SENDING reminder to user {r.telegram_user_id}: {r.subject_name}")
                 await bot.send_message(r.telegram_user_id, msg, parse_mode="HTML")
         except Exception as e:
