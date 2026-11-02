@@ -14,6 +14,7 @@ from ..crud import (
     add_reminder, delete_reminder, get_user,
     get_user_reminders
 )
+from ..format import header, card, compose, empty, menu, day_label
 
 router = Router()
 
@@ -60,42 +61,31 @@ BUBBLE_EMOJI = {
     "Bubble": "🏟️",
 }
 
-GYM_LEGEND = (
-    "🏋️ UCA Gym Schedule\n\n"
-    "━━━━━━━━━━━━━━━━━━\n"
-    "🟣 = Female Session\n"
-    "🔵 = Male Session\n"
-    "🟢 = Faculty / OPS\n"
-    "🔴 = Cleaning Time\n"
-    "━━━━━━━━━━━━━━━━━━\n"
+GYM_LEGEND_LINES = (
+    "🟣 Female · 🔵 Male · 🟢 Faculty / OPS · 🔴 Cleaning"
 )
 
-BUBBLE_LEGEND = (
-    "🏟️ Sports Bubble Weekly Schedule\n\n"
-    "━━━━━━━━━━━━━━━━━━\n"
-    "🧹 Cleaning & Disinfection\n"
-    "⚽ Football\n"
-    "🏐 Volleyball\n"
-    "🏀 Basketball\n"
-    "🥋 Judo Grappling\n"
-    "🏏 Cricket\n"
-    "🎾 Tennis\n"
-    "🏃 Physical Education\n"
-    "👮 UCA Security\n"
-    "👨‍🏫 UCA Faculty\n"
-    "━━━━━━━━━━━━━━━━━━\n"
+BUBBLE_LEGEND_LINES = (
+    "🧹 Cleaning · ⚽ Football · 🏐 Volleyball · 🏀 Basketball\n"
+    "🥋 Judo · 🏏 Cricket · 🎾 Tennis · 🏃 PE · 👮 Security"
 )
 
-def _build_gym_day_text(day: str, slots, reminder_event_ids: set = None) -> str:
+
+def _build_gym_day_parts(day: str, slots, reminder_event_ids: set = None) -> list:
     if reminder_event_ids is None:
         reminder_event_ids = set()
-    text = f"\n📅 {day}\n"
+    parts = [day_label(day)]
     for s in slots:
         emoji = SESSION_EMOJI.get(s.session_type, "⚪")
-        reminder_icon = " 🔔" if s.event_id in reminder_event_ids else ""
-        text += f"{emoji} {s.start_time_str} – {s.end_time_str} → {s.session_type}{reminder_icon}\n"
-    text += "\n━━━━━━━━━━━━━━━━━━\n"
-    return text
+        status = "⏰ Reminder on" if s.event_id in reminder_event_ids else None
+        parts.append(
+            card(
+                f"{s.start_time_str} - {s.end_time_str}",
+                f"{emoji} {s.session_type}",
+                status=status,
+            )
+        )
+    return parts
 
 def _time_to_minutes(time_str: str) -> int:
     if time_str == "00:00":
@@ -125,50 +115,84 @@ def _parse_bubble_time_range(time_range_str: str) -> tuple:
     return _time_to_minutes(parts[0].strip()), _time_to_minutes(parts[1].strip())
 
 
-@router.message(F.text == "🏋️ Sports & Gym & Meal")
+@router.message(F.text.in_({"📋 Schedules", "🏋️ Sports & Gym & Meal"}))
 async def sports_menu(message: Message):
-    await message.answer("🏋️ Sports & Gym & Meal Menu:", reply_markup=get_sports_submenu_kb())
+    # "Sports & Gym & Meal" kept so sticky old keyboards still open this menu
+    await message.answer(
+        menu("📋", "Schedules"),
+        reply_markup=get_sports_submenu_kb(),
+        parse_mode="HTML",
+    )
 
 @router.callback_query(F.data == "sports_menu_back")
 async def back_to_sports_menu(callback: CallbackQuery):
-    await callback.message.edit_text("🏋️ Sports & Gym & Meal Menu:", reply_markup=get_sports_submenu_kb())
+    await callback.message.edit_text(
+        menu("📋", "Schedules"),
+        reply_markup=get_sports_submenu_kb(),
+        parse_mode="HTML",
+    )
+
+
+@router.callback_query(F.data == "sports_library")
+async def show_library_hours(callback: CallbackQuery):
+    # Hardcoded to match the frontend library hours.
+    text = compose(
+        header("📚", "Library Hours"),
+        "📅 <b>Weekdays</b>",
+        card("09:00 - 19:00", "👤 Library Staff"),
+        card("19:00 - 22:00", "🧑‍💼 Library Assistants"),
+        "📅 <b>Weekends</b>",
+        card("09:00 - 15:00", "🔒 Closed"),
+        card("15:00 - 22:00", "🧑‍💼 Library Assistants"),
+    )
+    builder = InlineKeyboardBuilder()
+    builder.button(text="« Back", callback_data="sports_menu_back")
+    await callback.message.edit_text(text, parse_mode="HTML", reply_markup=builder.as_markup())
 
 # ──────────────────── Meal Time ────────────────────
 
 @router.callback_query(F.data == "sports_meal")
 async def show_meal_times(callback: CallbackQuery):
-    # Fetch active reminders for the user
     reminders = await get_user_reminders(callback.from_user.id)
-    
-    # Extract unique meal names that have active reminders
-    active_meal_reminders = {r.subject_name for r in reminders if r.reminder_type == "meal"}
-    
-    # Append the bell icon if the reminder is active
-    breakfast_bell = " 🔔" if "Breakfast" in active_meal_reminders else ""
-    lunch_bell = " 🔔" if "Lunch" in active_meal_reminders else ""
-    dinner_bell = " 🔔" if "Dinner" in active_meal_reminders else ""
-    
-    text = (
-        "🍽 <b>Meal Times</b>\n\n"
-        f"🥣 <b>Breakfast:</b>  8:00 AM – 9:30 AM{breakfast_bell}\n"
-        "    <i>(Weekends: 8:00 AM – 10:00 AM)</i>\n\n"
-        f"🍛 <b>Lunch:</b>  12:00 PM – 2:00 PM{lunch_bell}\n\n"
-        f"🍲 <b>Dinner:</b>  6:00 PM – 8:00 PM{dinner_bell}\n"
+    active = {r.subject_name for r in reminders if r.reminder_type == "meal"}
+
+    # Breaks are weekday-only, display-only (no reminders).
+    text = compose(
+        header("🍽", "Meal Times"),
+        card(
+            "08:00 - 09:30",
+            "🥣 Breakfast",
+            "Weekends: 08:00 - 10:00",
+            status="⏰ Reminder on" if "Breakfast" in active else None,
+        ),
+        card("10:30 - 11:00", "☕ Break"),
+        card(
+            "12:00 - 14:00",
+            "🍛 Lunch",
+            status="⏰ Reminder on" if "Lunch" in active else None,
+        ),
+        card("15:15 - 16:00", "☕ Break"),
+        card(
+            "18:00 - 20:00",
+            "🍲 Dinner",
+            status="⏰ Reminder on" if "Dinner" in active else None,
+        ),
     )
-    
+
     builder = InlineKeyboardBuilder()
-    builder.button(text="⬅️ Back", callback_data="sports_menu_back")
+    builder.button(text="« Back", callback_data="sports_menu_back")
     await callback.message.edit_text(text, parse_mode="HTML", reply_markup=builder.as_markup())
-
-
-
 
 
 # ──────────────────── Gym ────────────────────
 
 @router.callback_query(F.data == "sports_gym")
 async def gym_menu_options(callback: CallbackQuery):
-    await callback.message.edit_text("🏋️ Gym Schedule Options:", reply_markup=get_gym_options_kb())
+    await callback.message.edit_text(
+        menu("🏋️", "Gym Schedule"),
+        reply_markup=get_gym_options_kb(),
+        parse_mode="HTML",
+    )
 
 @router.callback_query(F.data == "gym_weekly")
 async def gym_weekly_schedule(callback: CallbackQuery):
@@ -179,7 +203,10 @@ async def gym_weekly_schedule(callback: CallbackQuery):
 
     all_slots = await get_all_gym_slots(gender=user.gender)
     if not all_slots:
-        await callback.message.edit_text("No gym schedule found for your gender.")
+        await callback.message.edit_text(
+            compose(header("🏋️", "Gym Schedule"), empty("No gym schedule found for your gender.")),
+            parse_mode="HTML",
+        )
         return
 
     reminders = await get_user_reminders(user.telegram_id)
@@ -192,19 +219,20 @@ async def gym_weekly_schedule(callback: CallbackQuery):
     part1_days = DAYS_ORDER[:4]
     part2_days = DAYS_ORDER[4:]
 
-    msg1 = GYM_LEGEND
+    parts1 = []
     for day in part1_days:
         if day in grouped:
-            msg1 += _build_gym_day_text(day, grouped[day], reminder_event_ids)
+            parts1.extend(_build_gym_day_parts(day, grouped[day], reminder_event_ids))
 
-    msg2 = ""
+    msg1 = compose(header("🏋️", "Gym · Weekly", GYM_LEGEND_LINES), *parts1)
+    await callback.message.edit_text(msg1, parse_mode="HTML")
+
+    parts2 = []
     for day in part2_days:
         if day in grouped:
-            msg2 += _build_gym_day_text(day, grouped[day], reminder_event_ids)
-
-    await callback.message.edit_text(msg1)
-    if msg2:
-        await callback.message.answer(msg2)
+            parts2.extend(_build_gym_day_parts(day, grouped[day], reminder_event_ids))
+    if parts2:
+        await callback.message.answer(compose(header("🏋️", "Gym · Weekly (cont.)"), *parts2), parse_mode="HTML")
 
 @router.callback_query(F.data == "gym_today")
 async def gym_today_schedule(callback: CallbackQuery):
@@ -215,15 +243,19 @@ async def gym_today_schedule(callback: CallbackQuery):
 
     today = datetime.now().strftime("%A")
     slots = await get_gym_slots_for_day(today, gender=user.gender)
+    hdr = header("🏋️", "Gym · Today", f"📅 {today}", GYM_LEGEND_LINES)
     if not slots:
-        await callback.message.edit_text(f"No gym slots found for today ({today}) for your gender.")
+        await callback.message.edit_text(
+            compose(hdr, empty(f"No gym slots today for your gender.")),
+            parse_mode="HTML",
+        )
         return
 
     reminders = await get_user_reminders(user.telegram_id)
     reminder_event_ids = {r.event_id for r in reminders if r.reminder_type == "gym"}
-
-    text = f"🏋️ Today's Gym Schedule:\n" + _build_gym_day_text(today, slots, reminder_event_ids)
-    await callback.message.edit_text(text)
+    parts = _build_gym_day_parts(today, slots, reminder_event_ids)
+    # day_label already included; drop duplicate day heading for today view
+    await callback.message.edit_text(compose(hdr, *parts[1:]), parse_mode="HTML")
 
 @router.callback_query(F.data == "gym_current_slot")
 async def gym_current_slot_info(callback: CallbackQuery):
@@ -238,7 +270,11 @@ async def gym_current_slot_info(callback: CallbackQuery):
 
     slots = await get_gym_slots_for_day(today, gender=user.gender)
     if not slots:
-        await callback.message.edit_text("No gym schedule configured for your gender today.", reply_markup=get_gym_options_kb())
+        await callback.message.edit_text(
+            compose(header("🕒", "Current Gym Slot"), empty("No gym schedule configured for your gender today.")),
+            reply_markup=get_gym_options_kb(),
+            parse_mode="HTML",
+        )
         return
 
     current_slot = None
@@ -265,95 +301,122 @@ async def gym_current_slot_info(callback: CallbackQuery):
         if tomorrow_slots:
             next_slot = tomorrow_slots[0]
 
+    parts = []
     if current_slot:
         emoji = SESSION_EMOJI.get(current_slot.session_type, "⚪")
-        end_min = _time_to_minutes(current_slot.end_time_str)
-        remaining = end_min - current_min
-        text = (
-            f"🕒 <b>Current Gym Time Slot:</b>\n\n"
-            f"{emoji} <b>Active Slot:</b> {current_slot.session_type}\n"
-            f"⏰ <b>Hours:</b> {current_slot.start_time_str} – {current_slot.end_time_str}\n"
-            f"⏳ <b>Time Remaining:</b> {_minutes_to_hm_str(remaining)}\n\n"
+        remaining = _time_to_minutes(current_slot.end_time_str) - current_min
+        parts.append(
+            card(
+                f"{current_slot.start_time_str} - {current_slot.end_time_str}",
+                f"{emoji} {current_slot.session_type}",
+                f"⏳ {_minutes_to_hm_str(remaining)} left",
+            )
         )
     else:
-        text = "🕒 <b>Current Gym Time Slot:</b>\n\n💤 <b>Active Slot:</b> Gym is currently CLOSED / No active session.\n\n"
+        parts.append(empty("💤 Gym is closed — no active session."))
 
     if next_slot:
         next_emoji = SESSION_EMOJI.get(next_slot.session_type, "⚪")
         start_min = _time_to_minutes(next_slot.start_time_str)
         if next_slot.day_of_week != today:
             time_until = (24 * 60 - current_min) + start_min
-            text += f"➡️ <b>Next Slot:</b> {next_slot.session_type} (Tomorrow)\n⏰ <b>Hours:</b> {next_slot.start_time_str} – {next_slot.end_time_str}\n⏳ <b>Starts in:</b> {_minutes_to_hm_str(time_until)}\n"
+            when = "Tomorrow"
         else:
             time_until = start_min - current_min
-            text += f"➡️ <b>Next Slot:</b> {next_slot.session_type}\n⏰ <b>Hours:</b> {next_slot.start_time_str} – {next_slot.end_time_str}\n⏳ <b>Starts in:</b> {_minutes_to_hm_str(time_until)}\n"
+            when = "Today"
+        parts.append(
+            card(
+                f"{next_slot.start_time_str} - {next_slot.end_time_str}",
+                f"➡️ Next · {next_emoji} {next_slot.session_type}",
+                f"📅 {when} · starts in {_minutes_to_hm_str(time_until)}",
+            )
+        )
     else:
-        text += "➡️ <b>Next Slot:</b> None scheduled."
+        parts.append(empty("No next slot scheduled."))
 
     builder = InlineKeyboardBuilder()
-    builder.button(text="Back", callback_data="sports_gym")
-    await callback.message.edit_text(text, parse_mode="HTML", reply_markup=builder.as_markup())
+    builder.button(text="« Back", callback_data="sports_gym")
+    await callback.message.edit_text(
+        compose(header("🕒", "Current Gym Slot", f"📅 {today}"), *parts),
+        parse_mode="HTML",
+        reply_markup=builder.as_markup(),
+    )
 
 # ──────────────────── Bubble ────────────────────
 
 @router.callback_query(F.data == "sports_bubble")
 async def bubble_menu_options(callback: CallbackQuery):
-    await callback.message.edit_text("🏀 Sports Bubble Options:", reply_markup=get_bubble_options_kb())
+    await callback.message.edit_text(
+        menu("🏀", "Sports Bubble"),
+        reply_markup=get_bubble_options_kb(),
+        parse_mode="HTML",
+    )
 
 @router.callback_query(F.data == "bubble_weekly")
 async def bubble_weekly_schedule(callback: CallbackQuery):
-    print(f"DEBUG: bubble_weekly callback received")
     all_sports = await get_all_bubble_sports()
-    print(f"DEBUG: Found {len(all_sports)} bubble sports")
     if not all_sports:
-        await callback.message.edit_text("No bubble schedule found.")
+        await callback.message.edit_text(
+            compose(header("🏟️", "Bubble · Weekly"), empty("No bubble schedule found.")),
+            parse_mode="HTML",
+        )
         return
 
-    # Get user reminders for bubble sports
     reminders = await get_user_reminders(callback.from_user.id)
-    # Create a set of event IDs that have reminders (like gym does)
     reminder_event_ids = {r.event_id for r in reminders if r.reminder_type == "bubble"}
-    
-    # Debug logging
-    print(f"DEBUG: User {callback.from_user.id} bubble reminder event IDs: {reminder_event_ids}")
 
     grouped = {}
     for s in all_sports:
         grouped.setdefault(s.day_of_week, []).append(s)
 
-    text = BUBBLE_LEGEND
+    # Weekly bubble can be long — keep compact cards, split if needed
+    parts = []
     for day in DAYS_ORDER:
-        if day in grouped:
-            text += f"\n📅 {day}\n"
-            for s in grouped[day]:
-                emoji = BUBBLE_EMOJI.get(s.sport_name, "⚪")
-                reminder_icon = " 🔔" if s.event_id in reminder_event_ids else ""
-                print(f"DEBUG: Checking {s.sport_name}, event_id {s.event_id} -> {reminder_icon}")
-                text += f"{emoji} {s.time_str} → {s.sport_name}{reminder_icon}\n"
-            text += "\n━━━━━━━━━━━━━━━━━━\n"
+        if day not in grouped:
+            continue
+        parts.append(day_label(day))
+        for s in grouped[day]:
+            emoji = BUBBLE_EMOJI.get(s.sport_name, "⚪")
+            status = "⏰ Reminder on" if s.event_id in reminder_event_ids else None
+            parts.append(card(s.time_str, f"{emoji} {s.sport_name}", status=status))
 
-    await callback.message.edit_text(text)
+    text = compose(header("🏟️", "Bubble · Weekly", BUBBLE_LEGEND_LINES), *parts)
+    # Telegram hard limit 4096; fall back to plain split if oversized
+    if len(text) <= 4000:
+        await callback.message.edit_text(text, parse_mode="HTML")
+    else:
+        mid = len(parts) // 2
+        await callback.message.edit_text(
+            compose(header("🏟️", "Bubble · Weekly", BUBBLE_LEGEND_LINES), *parts[:mid]),
+            parse_mode="HTML",
+        )
+        await callback.message.answer(
+            compose(header("🏟️", "Bubble · Weekly (cont.)"), *parts[mid:]),
+            parse_mode="HTML",
+        )
 
 @router.callback_query(F.data == "bubble_today")
 async def bubble_today_schedule(callback: CallbackQuery):
     today = datetime.now().strftime("%A")
     sports = await get_bubble_sports_for_day(today)
+    hdr = header("🏟️", "Bubble · Today", f"📅 {today}")
     if not sports:
-        await callback.message.edit_text(f"No bubble sports scheduled for today ({today}).")
+        await callback.message.edit_text(
+            compose(hdr, empty(f"No bubble sports scheduled for {today}.")),
+            parse_mode="HTML",
+        )
         return
 
-    # Get user reminders for bubble sports
     reminders = await get_user_reminders(callback.from_user.id)
-    # Create a set of event IDs that have reminders (like gym does)
     reminder_event_ids = {r.event_id for r in reminders if r.reminder_type == "bubble"}
 
-    text = f"🏟️ Today's Sports Bubble Schedule:\n\n📅 {today}\n"
+    parts = []
     for s in sports:
         emoji = BUBBLE_EMOJI.get(s.sport_name, "⚪")
-        reminder_icon = " 🔔" if s.event_id in reminder_event_ids else ""
-        text += f"{emoji} {s.time_str} → {s.sport_name}{reminder_icon}\n"
-    text += "\n━━━━━━━━━━━━━━━━━━\n"
-    await callback.message.edit_text(text)
+        status = "⏰ Reminder on" if s.event_id in reminder_event_ids else None
+        parts.append(card(s.time_str, f"{emoji} {s.sport_name}", status=status))
+
+    await callback.message.edit_text(compose(hdr, *parts), parse_mode="HTML")
 
 @router.callback_query(F.data == "bubble_current_slot")
 async def bubble_current_slot_info(callback: CallbackQuery):
@@ -389,33 +452,47 @@ async def bubble_current_slot_info(callback: CallbackQuery):
         if tomorrow_sports:
             next_sport = tomorrow_sports[0]
 
+    parts = []
     if current_sport:
         emoji = BUBBLE_EMOJI.get(current_sport.sport_name, "⚪")
-        start_min, end_min = _parse_bubble_time_range(current_sport.time_str)
+        _, end_min = _parse_bubble_time_range(current_sport.time_str)
         remaining = end_min - current_min
-        text = (
-            f"🕒 <b>Current Bubble Time Slot:</b>\n\n"
-            f"{emoji} <b>Active Sport:</b> {current_sport.sport_name}\n"
-            f"⏰ <b>Hours:</b> {current_sport.time_str}\n"
-            f"⏳ <b>Time Remaining:</b> {_minutes_to_hm_str(remaining)}\n\n"
+        parts.append(
+            card(
+                current_sport.time_str,
+                f"{emoji} {current_sport.sport_name}",
+                f"⏳ {_minutes_to_hm_str(remaining)} left",
+            )
         )
     else:
-        text = "🕒 <b>Current Bubble Time Slot:</b>\n\n💤 <b>Active Sport:</b> Bubble is currently empty / CLOSED.\n\n"
+        parts.append(empty("💤 Bubble is empty / closed right now."))
 
     if next_sport:
         start_min, _ = _parse_bubble_time_range(next_sport.time_str)
         if next_sport.day_of_week != today:
             time_until = (24 * 60 - current_min) + start_min
-            text += f"➡️ <b>Next Sport:</b> {next_sport.sport_name} (Tomorrow)\n⏰ <b>Hours:</b> {next_sport.time_str}\n⏳ <b>Starts in:</b> {_minutes_to_hm_str(time_until)}\n"
+            when = "Tomorrow"
         else:
             time_until = start_min - current_min
-            text += f"➡️ <b>Next Sport:</b> {next_sport.sport_name}\n⏰ <b>Hours:</b> {next_sport.time_str}\n⏳ <b>Starts in:</b> {_minutes_to_hm_str(time_until)}\n"
+            when = "Today"
+        emoji = BUBBLE_EMOJI.get(next_sport.sport_name, "⚪")
+        parts.append(
+            card(
+                next_sport.time_str,
+                f"➡️ Next · {emoji} {next_sport.sport_name}",
+                f"📅 {when} · starts in {_minutes_to_hm_str(time_until)}",
+            )
+        )
     else:
-        text += "➡️ <b>Next Sport:</b> None scheduled."
+        parts.append(empty("No next sport scheduled."))
 
     builder = InlineKeyboardBuilder()
-    builder.button(text="Back", callback_data="sports_bubble")
-    await callback.message.edit_text(text, parse_mode="HTML", reply_markup=builder.as_markup())
+    builder.button(text="« Back", callback_data="sports_bubble")
+    await callback.message.edit_text(
+        compose(header("🕒", "Current Bubble Slot", f"📅 {today}"), *parts),
+        parse_mode="HTML",
+        reply_markup=builder.as_markup(),
+    )
 
 # ──────────────────── Reminders ────────────────────
 
@@ -428,7 +505,11 @@ async def sports_reminder_type(callback: CallbackQuery):
     builder.button(text="Bubble Sports", callback_data="sprem_bub")
     builder.button(text="Meal Times", callback_data="sprem_meal")  # <-- Added
     builder.adjust(3)
-    await callback.message.edit_text("Select type:", reply_markup=builder.as_markup())
+    await callback.message.edit_text(
+        header("⏰", "Sports Reminders", "Select a type:"),
+        reply_markup=builder.as_markup(),
+        parse_mode="HTML",
+    )
 
 
 
@@ -799,29 +880,30 @@ async def process_meal_reminder_toggle(callback: CallbackQuery):
         return
         
     else:
-        # Turn off reminders (remains the same)
         @sync_to_async
         def delete_meal_reminders():
             u = UserAccount.objects.get(telegram_id=callback.from_user.id)
-            meal_events = Event.objects.filter(status="MEAL_TIME").prefetch_related('mealtime_set')
+            meal_events = Event.objects.filter(
+                status="MEAL_TIME", mealtime__meal_name=meal_name
+            ).distinct()
+            deleted = 0
             for e in meal_events:
-                me = e.mealtime_set.first()
-                if me and me.meal_name == meal_name:
-                    Reminder.objects.filter(user_id=u, event_id=e).delete()
-        
+                deleted += Reminder.objects.filter(user_id=u, event_id=e).delete()[0]
+            return deleted
+
         await delete_meal_reminders()
-        
+
         emoji_map = {"Breakfast": "🍳", "Lunch": "🍽️", "Dinner": "🍲"}
         emoji = emoji_map.get(meal_name, "🍽️")
         text = (
             f"❌ <b>Reminder OFF!</b>\n\n"
             f"{emoji} <b>Meal:</b> {meal_name}\n"
-            f"📅 <b>Days:</b> Permanent (All 7 days)\n\n"
+            f"📅 <b>Days:</b> All 7 days\n\n"
             f"🔔 You will no longer receive notifications for {meal_name}."
         )
-        
+
         builder = InlineKeyboardBuilder()
-        builder.button(text="⬅️ Back to Sports Menu", callback_data="sports_menu_back")
+        builder.button(text="« Back", callback_data="sports_menu_back")
         await callback.message.edit_text(text, parse_mode="HTML", reply_markup=builder.as_markup())
 
 
@@ -833,50 +915,79 @@ async def save_meal_reminder(callback: CallbackQuery):
     from camphub.models import Event, MealTime, Reminder
     from accounts.models import UserAccount
     from asgiref.sync import sync_to_async
-    
+    from datetime import time as dt_time
+
     # Callback data format: spr_meal_off_{meal_name}_{offset}
     data_without_prefix = callback.data[len("spr_meal_off_"):]
-    
-    # Split by the last underscore to separate meal name and offset
     parts = data_without_prefix.rsplit("_", 1)
     meal_name = parts[0]
     offset = int(parts[1])
-    
+
+    # Must match the Meal Times screen (weekday starts).
+    MEAL_TIMES = {
+        "Breakfast": (dt_time(8, 0), dt_time(9, 30)),
+        "Lunch": (dt_time(12, 0), dt_time(14, 0)),
+        "Dinner": (dt_time(18, 0), dt_time(20, 0)),
+    }
+    DAY_CODES = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
+
+    if meal_name not in MEAL_TIMES:
+        await callback.answer("Unknown meal", show_alert=True)
+        return
+
+    start_t, end_t = MEAL_TIMES[meal_name]
+
     @sync_to_async
     def set_meal_reminders():
         u = UserAccount.objects.get(telegram_id=callback.from_user.id)
-        meal_events = Event.objects.filter(status="MEAL_TIME").prefetch_related('mealtime_set')
         count = 0
-        for e in meal_events:
-            me = e.mealtime_set.first()
-            if me and me.meal_name == meal_name:
-                time_str = e.start_time.strftime("%H:%M")
-                # Delete any pre-existing reminder for safety
-                Reminder.objects.filter(user_id=u, event_id=e).delete()
-                # Save a permanent reminder linked directly to this Event
-                Reminder.objects.create(
-                    user_id=u,
-                    event_time_str=time_str,
-                    reminder_offset=offset,
-                    event_id=e
+        for day_code in DAY_CODES:
+            # Ensure a MEAL_TIME event exists for this day (DB had none before).
+            event = Event.objects.filter(
+                status="MEAL_TIME", day=day_code, start_time=start_t
+            ).first()
+            if not event:
+                event = Event.objects.create(
+                    status="MEAL_TIME",
+                    day=day_code,
+                    start_time=start_t,
+                    end_time=end_t,
                 )
-                count += 1
+            mt = MealTime.objects.filter(event_id=event, meal_name=meal_name).first()
+            if not mt:
+                # Re-link or create MealTime for this event
+                existing = MealTime.objects.filter(event_id=event).first()
+                if existing:
+                    existing.meal_name = meal_name
+                    existing.save()
+                else:
+                    MealTime.objects.create(meal_name=meal_name, event_id=event)
+
+            time_str = start_t.strftime("%H:%M")
+            Reminder.objects.filter(user_id=u, event_id=event).delete()
+            Reminder.objects.create(
+                user_id=u,
+                event_time_str=time_str,
+                reminder_offset=offset,
+                event_id=event,
+            )
+            count += 1
         return count
-    
-    await set_meal_reminders()
-    
+
+    count = await set_meal_reminders()
+
     emoji_map = {"Breakfast": "🍳", "Lunch": "🍽️", "Dinner": "🍲"}
     emoji = emoji_map.get(meal_name, "🍽️")
     text = (
         f"✅ <b>Reminder ON!</b>\n\n"
         f"{emoji} <b>Meal:</b> {meal_name}\n"
         f"⏰ <b>Timing:</b> {offset} minutes before each meal\n"
-        f"📅 <b>Days:</b> Permanent (All 7 days)\n\n"
+        f"📅 <b>Days:</b> All 7 days ({count} reminders)\n\n"
         f"🔔 You will receive a notification before every {meal_name}!"
     )
-    
+
     builder = InlineKeyboardBuilder()
-    builder.button(text="⬅️ Back to Sports Menu", callback_data="sports_menu_back")
+    builder.button(text="« Back", callback_data="sports_menu_back")
     await callback.message.edit_text(text, parse_mode="HTML", reply_markup=builder.as_markup())
 
 

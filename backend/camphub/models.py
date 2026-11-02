@@ -53,6 +53,8 @@ class Cohort(models.Model):
         ('CS_B', 'CS_B'),
         ('CM', 'CM'),
         ('CS', 'CS'),
+        ('CS_DIRECT', 'CS Direct'),
+        ('POST_PREP', 'Post Prep'),
     ]
     cohort_name = models.CharField(max_length=50, choices=CHOICES)
 
@@ -139,7 +141,10 @@ class Instructor(models.Model):
 
 
 class ClassEvent(models.Model):
-
+    SUB_CATEGORY_CHOICES = [
+        ('CS A', 'CS A'),
+        ('CS Direct', 'CS Direct'),
+    ]
     subject_id = models.ForeignKey(
         Subject, on_delete=models.CASCADE, null=True, blank=True, db_column='subject_id')
     instructor_id = models.ForeignKey(
@@ -150,8 +155,20 @@ class ClassEvent(models.Model):
         Event, on_delete=models.CASCADE, null=True, blank=True, db_column='event_id')
     room_id = models.ForeignKey(
         Room, on_delete=models.CASCADE, null=True, blank=True, db_column='room_id')
-    linked_event_id = models.ForeignKey(
-        'self', on_delete=models.CASCADE, null=True, blank=True, db_column='linked_event_id', related_name='+')
+    # Aligned with the production Postgres schema (migrations 0014-0017 on
+    # origin/main / deployTest): linked_event_id was removed there and
+    # replaced by share_group/sub_category. Keeping the old field made every
+    # ClassEvent query against the real DB fail with
+    # "column camphub_classevent.linked_event_id does not exist".
+    share_group = models.UUIDField(null=True, blank=True, db_index=True)
+    sub_category = models.CharField(
+        max_length=50, choices=SUB_CATEGORY_CHOICES, blank=True, null=True)
+
+    def group_members(self):
+        """Every row of this shared class, including this one."""
+        if self.share_group:
+            return ClassEvent.objects.filter(share_group=self.share_group)
+        return ClassEvent.objects.filter(pk=self.pk)
 
     def clean(self):
         super().clean()
@@ -175,6 +192,8 @@ class ClassEvent(models.Model):
 
         if self.pk:
             conflicts = conflicts.exclude(pk=self.pk)
+        if self.share_group:
+            conflicts = conflicts.exclude(share_group=self.share_group)
 
         if self.cohort_id and self.cohort_id.study_year_id:
             current_study_year = self.cohort_id.study_year_id

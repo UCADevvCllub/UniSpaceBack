@@ -17,6 +17,24 @@ def get_major_kb(prefix: str = "major_") -> InlineKeyboardMarkup:
     builder.adjust(1)
     return builder.as_markup()
 
+
+def get_freshman_group_kb(prefix: str = "fgroup_") -> InlineKeyboardMarkup:
+    """Freshman CS Group: CS A / CS B."""
+    builder = InlineKeyboardBuilder()
+    builder.button(text="CS A", callback_data=f"{prefix}CS_A")
+    builder.button(text="CS B", callback_data=f"{prefix}CS_B")
+    builder.adjust(2)
+    return builder.as_markup()
+
+
+def get_freshman_track_kb(prefix: str = "ftrack_") -> InlineKeyboardMarkup:
+    """Freshman CS Track: Direct / Post Prep."""
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Direct", callback_data=f"{prefix}CS_DIRECT")
+    builder.button(text="Post Prep", callback_data=f"{prefix}POST_PREP")
+    builder.adjust(2)
+    return builder.as_markup()
+
 def get_lessons_submenu_kb() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="Today's Lessons", callback_data="lessons_today")
@@ -30,6 +48,7 @@ def get_sports_submenu_kb() -> InlineKeyboardMarkup:
     builder.button(text="🏋️ Gym", callback_data="sports_gym")
     builder.button(text="🏀 Bubble", callback_data="sports_bubble")
     builder.button(text="🍽 Meal Time", callback_data="sports_meal")
+    builder.button(text="📚 Library", callback_data="sports_library")
     builder.button(text="⏰ Set Reminder", callback_data="sports_reminder")
     builder.adjust(1)
     return builder.as_markup()
@@ -39,7 +58,7 @@ def get_gym_options_kb() -> InlineKeyboardMarkup:
     builder.button(text="🗓 Weekly Schedule", callback_data="gym_weekly")
     builder.button(text="📅 Today's Schedule", callback_data="gym_today")
     builder.button(text="🕒 Current Time Slot", callback_data="gym_current_slot")
-    builder.button(text="Back", callback_data="sports_menu_back")
+    builder.button(text="« Back", callback_data="sports_menu_back")
     builder.adjust(1)
     return builder.as_markup()
 
@@ -48,7 +67,7 @@ def get_bubble_options_kb() -> InlineKeyboardMarkup:
     builder.button(text="🗓 Weekly Schedule", callback_data="bubble_weekly")
     builder.button(text="📅 Today's Schedule", callback_data="bubble_today")
     builder.button(text="🕒 Current Time Slot", callback_data="bubble_current_slot")
-    builder.button(text="Back", callback_data="sports_menu_back")
+    builder.button(text="« Back", callback_data="sports_menu_back")
     builder.adjust(1)
     return builder.as_markup()
 
